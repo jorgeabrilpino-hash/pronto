@@ -4,11 +4,11 @@
 - Fase: **Ola 0 cerrada** (análisis + paquete base). Siguiente: Ola 1 (S1–S4 en paralelo), bloqueada por los pendientes 1, 2 y 3 de Jorge.
 - Idea validada con ajustes: ver `docs/ANALISIS.md` §6 (USDC testnet como activo principal, solo facturas no vencidas, Supabase sin login con la red como verdad).
 - Contrato `contracts/pronto_offer` escrito con 11 pruebas; **no ejecutadas aquí** (no hay Rust ni Stellar CLI en la máquina). Sin desplegar.
-- Repo git local iniciado en `main`, sin commits ni remoto. `gh` CLI no instalado.
+- Repo público: https://github.com/jorgeabrilpino-hash/pronto (rama `main`, 7 commits subidos el 19 nov). `gh` CLI no instalado; el push funciona con las credenciales de git de Jorge.
 
 ## ⏸️ Pendientes de Jorge
 1. Inscripción en el Hub (cierre 24 nov).
-2. Repo público en GitHub + registrarlo en el Hub (cierre 25 nov).
+2. Registrar el repo en el Hub (cierre 25 nov, 11:59 p. m.). Sin esto no se puede entregar.
 3. Instalar Rust + `wasm32v1-none` + Stellar CLI.
 4. Dos cuentas Varial de testnet (direcciones públicas), proyecto Supabase, OK de Vercel.
 
