@@ -1,0 +1,6 @@
+target/
+.env
+.env.*
+node_modules/
+.stellar/
+contracts/*/test_snapshots/
