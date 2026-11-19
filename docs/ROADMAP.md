@@ -14,6 +14,7 @@
 - **Alcance de usuarios:** MYPE **formales** que emiten factura electrónica a compradores formales. Las informales quedan fuera del MVP y se declara en el README. Sin integración con SUNAT ni verificación de cesión en CAVALI (declararlo).
 - **Aceptar cierra la factura:** el texto de aceptación y el comprobante dicen "recibo S/ X como pago total de la factura <serie-número>". El contrato no conoce la factura, así que esa constancia es la prueba. El tratamiento tributario del descuento (posible nota de crédito) se consulta con un contador y se declara como pendiente.
 
+- **Alcance del producto:** Pronto es la capa de pago entre partes que **ya comercian**. El descubrimiento de clientes, los pedidos y las sugerencias de precio de producto son Etapa 2 (`docs/ETAPA2.md`) y no se construyen en la buildathon. El uso del proveedor es por evento (tiene una factura aprobada o recibe una oferta), no diario: se declara como límite.
 - **Anti-presión:** solo ofertas antes del vencimiento, rechazar no tiene costo, la mora legal sigue corriendo y la ficha pública deja en evidencia a quien estira los pagos para forzar descuentos.
 
 **Funciones confirmadas**
@@ -98,7 +99,7 @@ Cada brief asume: repo `C:\Buildathon\pronto`, rama propia, leer `CLAUDE.md` del
 
 ### S4 · Esquema Supabase (Sonnet) — Ola 1
 - **Archivos:** `supabase/**`.
-- **Hacer:** migraciones de `companies`, `obligations`, `offers` según §5.2 (montos `numeric(20,7)`), índice único parcial (una oferta `open`/`accepted` por obligación), regla "solo facturas no vencidas" (ajuste B), RLS restrictiva sin login (ajuste E), tipos TS generados en `supabase/types.ts`.
+- **Hacer:** migraciones de `companies` (más `sector` texto nullable y `ficha_publica` boolean por defecto true, para la Etapa 2), `obligations`, `offers` según §5.2 (montos `numeric(20,7)`), índice único parcial (una oferta `open`/`accepted` por obligación), regla "solo facturas no vencidas" (ajuste B), RLS restrictiva sin login (ajuste E), tipos TS generados en `supabase/types.ts`.
 - **Listo cuando:** migraciones aplicadas en el proyecto de Jorge y los advisors de seguridad sin errores críticos.
 
 ### S5 · Núcleo de negocio + transacciones (Opus) — Ola 2a
@@ -113,7 +114,7 @@ Cada brief asume: repo `C:\Buildathon\pronto`, rama propia, leer `CLAUDE.md` del
 
 ### S7 · Vista proveedor (Sonnet) — Ola 2b
 - **Archivos:** `web/src/features/supplier/**`. **Requiere:** S2 aprobado, S4, S5.
-- **Hacer:** bandeja de ofertas para su billetera, comparación "esperar el día X por S/ A" vs. "cobrar hoy S/ B (costo anual C %)", aceptar con el texto "recibo S/ X como pago total de la factura <serie-número>", manejo de `NotOpen`/`Expired`, onboarding "Activar USDC" si falta la trustline. Generar el enlace de solicitud de pago anticipado con techo de descuento.
+- **Hacer:** bandeja de ofertas para su billetera, comparación "esperar el día X por S/ A" vs. "cobrar hoy S/ B (costo anual C %)", aceptar con el texto "recibo S/ X como pago total de la factura <serie-número>", manejo de `NotOpen`/`Expired`, onboarding "Activar USDC" si falta la trustline. Generar el enlace de solicitud de pago anticipado con techo de descuento. Mostrar una referencia de costos de alternativas (crédito de microempresa, factoring) con fuente y fecha, y sugerir el techo a partir del costo de financiamiento que declare la MYPE.
 
 ### S8 · Reconciliación, comprobante y CSV (Sonnet) — Ola 3
 - **Archivos:** `web/src/services/reconcile.ts`, `web/src/features/receipts/**`.
