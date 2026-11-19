@@ -15,6 +15,9 @@
 - **Aceptar cierra la factura:** el texto de aceptación y el comprobante dicen "recibo S/ X como pago total de la factura <serie-número>". El contrato no conoce la factura, así que esa constancia es la prueba. El tratamiento tributario del descuento (posible nota de crédito) se consulta con un contador y se declara como pendiente.
 
 - **Alcance del producto:** Pronto es la capa de pago entre partes que **ya comercian**. El descubrimiento de clientes, los pedidos y las sugerencias de precio de producto son Etapa 2 (`docs/ETAPA2.md`) y no se construyen en la buildathon. El uso del proveedor es por evento (tiene una factura aprobada o recibe una oferta), no diario: se declara como límite.
+- **Interfaz mínima y conexión por enlace:** una pantalla, una decisión, un botón; poco texto; Geist Sans y Geist Mono sobre tema claro con acento amarillo. Comprador y proveedor se conectan por una **invitación de un solo uso** con doble confirmación y verificación de RUC, y el comprador confirma la billetera del proveedor antes de reservar. Detalle completo en `docs/FLUJOS_Y_UX.md`.
+- **Stellar visible:** estado en vivo de cada operación, panel "Ver en la red" por oferta, pantalla `/red` y modo demostración (`docs/FLUJOS_Y_UX.md` §7).
+- **Sin IA en el núcleo:** ni chat ni cálculo con IA. Lectura de XML de factura electrónica (sin IA) como atajo de carga. Foto o PDF con IA queda para la etapa 2.
 - **Anti-presión:** solo ofertas antes del vencimiento, rechazar no tiene costo, la mora legal sigue corriendo y la ficha pública deja en evidencia a quien estira los pagos para forzar descuentos.
 
 **Funciones confirmadas**
@@ -88,18 +91,18 @@ Cada brief asume: repo `C:\Buildathon\pronto`, rama propia, leer `CLAUDE.md` del
 - **Listo cuando:** IDs en `.env.example` y README con enlaces a stellar.expert, bindings compilan, script de despliegue reproducible.
 
 ### S2 · Diseño (Opus) — Ola 1
-- **Archivos:** `DESIGN.md`, `docs/mockups/**`.
+- **Archivos:** `DESIGN.md`, `docs/mockups/**`. **Spec:** `docs/FLUJOS_Y_UX.md` (pantallas, textos, tipografía, flujos y estados de Stellar); un mockup por pantalla del mapa de la sección 3.
 - **Hacer:** sistema visual coherente con la estética Stellar del Hub (amarillo `#FDDA24`, negro `#0F0F0F`, tema oscuro), español neutro, sin jerga cripto. Mockups (una imagen por pantalla): inicio y elección de rol · comprador: lista de obligaciones y crear/financiar oferta · proveedor (mobile-first): oferta con "esperar vs. cobrar hoy" y costo anualizado · confirmación y comprobante con hash · estados de error (§4.5 del documento base) · onboarding "Activar USDC".
 - **Listo cuando:** Jorge aprueba los mockups (GATE: sin aprobación no arrancan S6/S7).
 
 ### S3 · Esqueleto web + billetera (Sonnet) — Ola 1
 - **Archivos:** `web/**` excepto `web/packages/pronto-offer/**` y `web/src/features/**`.
-- **Hacer:** Vite + React + TS (Node ≥ 22.12), rutas `/`, `/comprador`, `/proveedor`, `/comprobante/:offerId` con páginas vacías; `@stellar/stellar-sdk@^17.4.0` y `@creit-tech/stellar-wallets-kit` (jsr) en TESTNET; `WalletProvider` con `{publicKey, isConnected, kit}`; `useBalance` para XLM y USDC (bigint, 7 decimales, refresco 30 s); configuración por variables `VITE_*`. Despliegue en Vercel **solo con OK de Jorge**.
+- **Hacer:** Vite + React + TS (Node ≥ 22.12), las rutas del mapa de `docs/FLUJOS_Y_UX.md` §3 (`/`, `/perfil`, `/fondos`, `/i/:token`, `/comprador/**`, `/proveedor/**`, `/comprobante/:offerId`, `/ficha/:address`, `/red`) con páginas vacías; `@stellar/stellar-sdk@^17.4.0` y `@creit-tech/stellar-wallets-kit` (jsr) en TESTNET; `WalletProvider` con `{publicKey, isConnected, kit}`; `useBalance` para XLM y USDC (bigint, 7 decimales, refresco 30 s); configuración por variables `VITE_*`. Despliegue en Vercel **solo con OK de Jorge**.
 - **Listo cuando:** `npm run build` verde y conexión de billetera verificada en el navegador.
 
 ### S4 · Esquema Supabase (Sonnet) — Ola 1
 - **Archivos:** `supabase/**`.
-- **Hacer:** migraciones de `companies` (más `sector` texto nullable y `ficha_publica` boolean por defecto true, para la Etapa 2), `obligations`, `offers` según §5.2 (montos `numeric(20,7)`), índice único parcial (una oferta `open`/`accepted` por obligación), regla "solo facturas no vencidas" (ajuste B), RLS restrictiva sin login (ajuste E), tipos TS generados en `supabase/types.ts`.
+- **Hacer:** migraciones de `companies` (más `sector` texto nullable y `ficha_publica` boolean por defecto true, para la Etapa 2), `obligations`, `offers` según §5.2 (montos `numeric(20,7)`), índice único parcial (una oferta `pending`/`open`/`accepted` por obligación), regla "solo facturas no vencidas" (ajuste B), acceso por reto firmado con la billetera y permisos por dirección (ajuste E revisado), más los campos nuevos y estados de `docs/FLUJOS_Y_UX.md` §9, tipos TS generados en `supabase/types.ts`.
 - **Listo cuando:** migraciones aplicadas en el proyecto de Jorge y los advisors de seguridad sin errores críticos.
 
 ### S5 · Núcleo de negocio + transacciones (Opus) — Ola 2a
@@ -130,9 +133,9 @@ Cada brief asume: repo `C:\Buildathon\pronto`, rama propia, leer `CLAUDE.md` del
 
 | # | Qué | Cuándo | Por qué bloquea |
 |---|---|---|---|
-| 1 | Inscribirte en el Hub con tu usuario de GitHub | 19 nov (cierre 24 nov) | Sin inscripción no hay participación |
+| 1 | Inscribirte en https://stellar.mintedinpe.com/codember/participar con tu usuario de GitHub | 19 nov (cierre 24 nov) | Sin inscripción no hay participación |
 | 2 | Crear el repo **público** `pronto` en GitHub y pasarme la URL (o autorizarme a crearlo con `gh`) | 19 nov | Checkpoint y worktrees de las sesiones |
-| 3 | Registrar el repo en el Hub | 20 nov (cierre 25 nov) | Sin esto no se puede entregar |
+| 3 | Registrar el repo en tu Dashboard del Hub (https://stellar.mintedinpe.com/dashboard, requiere cuenta aprobada) | 20 nov (cierre 25 nov) | Sin esto no se puede entregar |
 | 4 | Instalar Rust (rustup, con Build Tools de C++), `rustup target add wasm32v1-none` y Stellar CLI | 19 nov | Bloquea S1 (no están instalados en esta máquina) |
 | 5 | Billetera Varial con **dos cuentas** de testnet (comprador y proveedor), fondeadas con Friendbot. Pasar solo las **direcciones públicas** (G…), nunca la clave secreta | 21 nov | Demo con dos roles |
 | 6 | Crear un proyecto gratuito en Supabase y poner URL + anon key en `web/.env.local` (los agentes no escriben archivos `.env`) | 21 nov | S4 aplica migraciones ahí |
@@ -140,6 +143,7 @@ Cada brief asume: repo `C:\Buildathon\pronto`, rama propia, leer `CLAUDE.md` del
 | 8 | Aprobar los mockups de S2 | 21–22 nov | GATE de S6/S7 |
 | 9 | (Recomendado) 3 conversaciones de 15 min: 1 comprador, 2 proveedores MYPE | antes del 2 dic | Sube "Problema e impacto" (20 %) |
 | 10 | Grabar el video y entregar en APEX | 3–4 dic | Entregable final |
+| 11 | Entrar a Stellar Apex (https://stellarapex.org/hackathons/85928156-bffb-41f0-9066-2a221614c01a), crear tu cuenta y tu proyecto, y revisar qué pide el formulario de entrega. La página carga con sesión iniciada y no pude ver el formulario | 21 nov | Evita enterarte de un requisito el 4 dic |
 
 **Ya resuelto por Jorge:** Varial instalada, red TESTNET y cuenta fondeada con Friendbot (asistente de despliegue 3/3).
 
