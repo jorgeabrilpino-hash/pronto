@@ -65,7 +65,7 @@ Formato: dato grande · botón principal (amarillo) · botón secundario (texto)
 ### Comprador
 - **Panel:** dos cifras ("Ahorro", "Reservado") · lista de facturas (proveedor, factura, monto, estado) · **+ Nueva factura** · secundarios: *Cargar varias*, *Exportar CSV*, *Mi ficha*. Vacío: "Aún no hay facturas" + el botón.
 - **Nueva factura:** **Subir XML** (rellena todo) o cuatro campos: *Proveedor* (RUC), *Factura* (serie-número), *Importe*, *Emitida / Vence* · **Crear enlace**. Luego una hoja con **Copiar enlace** y **Enviar por WhatsApp**.
-- **Oferta:** una línea de contexto ("ACME SAC · F001-123 · 1 000 USDC · vence 18 dic") · selector de tasa (atajos 12 / 18 / 24 % y deslizador) · dato grande **"Pagas hoy 985"** y "Ahorras 15 · Costo anual 18,5 %" · vigencia (3 / 7 / 15 días, solo las que terminan antes del vencimiento) · confirmación de billetera del proveedor (*ACME SAC · G…ABCD*) · **Reservar 985 USDC**. Una línea fija: "Podrás recuperarlo al vencer".
+- **Oferta:** una línea de contexto ("ACME SAC · F001-123 · 1 000 USDC · vence 18 dic") · selector de **descuento** en % de la factura (atajos 1 % / 1,5 % / 2 % y deslizador) · dato grande **"Pagas hoy 985"** y "Ahorras 15 · equivale a 18,5 % anual" · vigencia (3 / 7 / 15 días, solo las que terminan antes del vencimiento) · confirmación de billetera del proveedor (*ACME SAC · G…ABCD*) · **Reservar 985 USDC**. Una línea fija: "Podrás recuperarlo al vencer".
   - *Reservada:* cuenta regresiva + **Ver en la red**.
   - *Vencida:* **Recuperar 985 USDC**.
   - *Cobrada:* **Ver comprobante**.
@@ -219,3 +219,10 @@ Las bases solo piden **declarar** el uso de IA en el README (generación de cód
 - **Aprobar este documento y los mockups de S2** antes de escribir pantallas.
 - **Moneda en pantalla:** USDC (propuesta). Si prefieres mostrar "S/", hay que declarar que son unidades de prueba.
 - **Verificar:** emisor oficial de USDC en testnet y dónde obtenerlo (S1), campos del XML con una factura real, y que la billetera elegida soporta firmar el reto de entrada.
+
+## 12. Aclaraciones (21 nov)
+
+- **Vistas separadas por rol.** El botón "+" cambia según quién entra: el **proveedor** ve "+ Pedir pago" (solicitud con techo) y el **comprador** ve "+ Nueva factura". El "+" siempre lleva su texto debajo. *Cobrar* es solo del proveedor; *Nueva oferta* es solo del comprador.
+- **Descuento en %, no tasa anual.** El comprador elige un descuento sobre la factura (1 %, 1,5 %, 2 %). La pantalla muestra primero el dinero (pagas hoy, ahorras) y en segundo plano su equivalente anual, que es el dato para comparar con un crédito. Cálculo: costo anual = (descuento / neto) × (365 / días que faltan).
+- **Cómo se encuentran.** No hay buscador. La primera vez, el comprador escribe el RUC del proveedor y le manda la invitación por WhatsApp. Cuando el proveedor confirma, queda guardado en **"Mis proveedores"** (y el comprador en **"Mis clientes"** del proveedor): las siguientes veces se elige de esa lista, sin enlace.
+- **De dónde sale el dinero.** En el MVP (testnet) el comprador carga USDC de prueba con el botón *Obtener fondos de prueba*; no hay dinero real ni conexión con bancos. Con dinero real, el comprador necesitaría USDC en su billetera, comprado en un exchange o a través de un *anchor* (puente entre banco y Stellar), y el proveedor lo retiraría a soles por la misma vía. No se encontró un anchor de soles operativo en Perú: es etapa 2 y depende de un tercero regulado. Pronto nunca custodia dinero ni se conecta al banco.

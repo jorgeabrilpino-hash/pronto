@@ -25,7 +25,8 @@
 - Sin puntos ni cashback (no hay quién los financie y duplican el descuento).
 - **A:** ofertas en lote (CSV de facturas aprobadas) con un enlace compartible por proveedor.
 - **B:** panel de ahorro del comprador (ganancia total y tasa anualizada).
-- El comprador fija una **tasa anual objetivo** y la UI calcula el neto con los días que quedan. El contrato no cambia. El costo que ve el proveedor se recalcula con la fecha de hoy.
+- El comprador elige un **descuento en % de la factura** (1 %, 1,5 %, 2 %) y la UI muestra primero el dinero y luego su equivalente anual. El contrato no cambia. El costo anual que ve el proveedor se recalcula con la fecha de hoy.
+- **Vistas por rol y "Mis proveedores":** el "+" del proveedor es "Pedir pago" y el del comprador "Nueva factura". Tras la primera invitación, la contraparte queda en una lista propia; no hay buscador global (`docs/FLUJOS_Y_UX.md` §12).
 - Descuento escalonado por fecha (C): pospuesto, cambia el contrato.
 - **Ficha pública del comprador (Should):** ofertas financiadas, % aceptado, días promedio adelantados y proveedores distintos, calculada desde la tabla `offers` de Supabase (reconciliada con el contrato; los eventos de la RPC solo guardan pocos días). Sin calificaciones manuales. El proveedor la ve al recibir una oferta. Sin directorio ni ranking de proveedores: queda para después del evento.
 
@@ -114,7 +115,7 @@ Cada brief asume: repo `C:\Buildathon\pronto`, rama propia, leer `CLAUDE.md` del
 
 ### S6 · Vista comprador (Sonnet) — Ola 2b
 - **Archivos:** `web/src/features/buyer/**`. **Requiere:** S2 aprobado, S4, S5.
-- **Hacer:** cargar obligación (solo no vencidas), definir la **tasa anual objetivo** (la UI calcula descuento y neto) y la vigencia (vigencia < fecha de pago original, máx. 30 días), financiar con el mensaje "Saldo insuficiente para reservar" si falla, **carga en lote por CSV con un enlace por proveedor**, **panel de ahorro** (ganancia total y tasa anualizada), lista con estados (Abierta/Aceptada/Vencida calculada/Recuperada), botón recuperar desde el vencimiento.
+- **Hacer:** cargar obligación (solo no vencidas), elegir el **descuento en %** (la UI calcula el neto y el equivalente anual), elegir al proveedor de "Mis proveedores" o invitarlo por RUC y la vigencia (vigencia < fecha de pago original, máx. 30 días), financiar con el mensaje "Saldo insuficiente para reservar" si falla, **carga en lote por CSV con un enlace por proveedor**, **panel de ahorro** (ganancia total y tasa anualizada), lista con estados (Abierta/Aceptada/Vencida calculada/Recuperada), botón recuperar desde el vencimiento.
 
 ### S7 · Vista proveedor (Sonnet) — Ola 2b
 - **Archivos:** `web/src/features/supplier/**`. **Requiere:** S2 aprobado, S4, S5.
