@@ -26,6 +26,7 @@
 - **A:** ofertas en lote (CSV de facturas aprobadas) con un enlace compartible por proveedor.
 - **B:** panel de ahorro del comprador (ganancia total y tasa anualizada).
 - El comprador elige un **descuento en % de la factura** (1 %, 1,5 %, 2 %) y la UI muestra primero el dinero y luego su equivalente anual. El contrato no cambia. El costo anual que ve el proveedor se recalcula con la fecha de hoy.
+- **Flujo V2 (`docs/FLUJO_V2.md`, prevalece sobre V1):** cada empresa tiene Código Pronto y QR; el proveedor crea la factura con su documento (PDF, foto, XML; Excel en lote) y la envía al cliente por código, QR o RUC exacto; una sola app con pestañas Por cobrar y Por pagar. Reparto: S7 = Por cobrar (nueva factura, adjuntos, código y QR); S6 = Por pagar (confirmar, ofrecer, recuperar); S4 suma `attachments`, `code`, `invites` y almacenamiento privado.
 - **Vistas por rol y "Mis proveedores":** el "+" del proveedor es "Pedir pago" y el del comprador "Nueva factura". Tras la primera invitación, la contraparte queda en una lista propia; no hay buscador global (`docs/FLUJOS_Y_UX.md` §12).
 - Descuento escalonado por fecha (C): pospuesto, cambia el contrato.
 - **Ficha pública del comprador (Should):** ofertas financiadas, % aceptado, días promedio adelantados y proveedores distintos, calculada desde la tabla `offers` de Supabase (reconciliada con el contrato; los eventos de la RPC solo guardan pocos días). Sin calificaciones manuales. El proveedor la ve al recibir una oferta. Sin directorio ni ranking de proveedores: queda para después del evento.

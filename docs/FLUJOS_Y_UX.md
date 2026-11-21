@@ -2,6 +2,7 @@
 
 > Estado: propuesta del 19 nov 2026, **pendiente de la aprobación de Jorge** (GATE: sin aprobación de los mockups no se escribe código de pantallas).
 > Aquí manda el flujo. Reglas de negocio: `docs/PRONTO_BASE.md` §4. Decisiones de producto: `docs/ROADMAP.md` §0.
+> **Actualización 21 nov:** las secciones 3 a 6 y 9 quedan reemplazadas por `docs/FLUJO_V2.md` (código de empresa, QR, factura adjunta y pestañas Por cobrar / Por pagar).
 
 ---
 
