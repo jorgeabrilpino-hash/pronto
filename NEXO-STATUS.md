@@ -3,13 +3,13 @@
 ## 📍 Estado actual (18 nov 2026)
 - Fase: **Ola 0 cerrada** (análisis + paquete base). Siguiente: Ola 1 (S1–S4 en paralelo), bloqueada por los pendientes 1, 2 y 3 de Jorge.
 - Idea validada con ajustes: ver `docs/ANALISIS.md` §6 (USDC testnet como activo principal, solo facturas no vencidas, Supabase sin login con la red como verdad).
-- Contrato `contracts/pronto_offer` escrito con 11 pruebas; **no ejecutadas aquí** (no hay Rust ni Stellar CLI en la máquina). Sin desplegar.
+- Contrato `contracts/pronto_offer`: **11 de 11 pruebas pasan** (ejecutadas el 21 nov con Rust 1.100 y soroban-sdk 29.0.1). Sin desplegar; falta el destino `wasm32v1-none` para compilar el WASM.
 - Repo público: https://github.com/jorgeabrilpino-hash/pronto (rama `main`, 7 commits subidos el 19 nov). `gh` CLI no instalado; el push funciona con las credenciales de git de Jorge.
 
 ## ⏸️ Pendientes de Jorge
 1. Inscripción en el Hub (cierre 24 nov).
 2. Registrar el repo en el Hub (cierre 25 nov, 11:59 p. m.). Sin esto no se puede entregar.
-3. Instalar Rust + `wasm32v1-none` + Stellar CLI.
+3. Rust y Stellar CLI ya instalados. Falta `rustup target add wasm32v1-none`.
 4. Dos cuentas Varial de testnet (direcciones públicas), proyecto Supabase, OK de Vercel.
 
 ## 🗺️ Roadmap
