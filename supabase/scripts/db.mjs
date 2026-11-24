@@ -25,18 +25,30 @@ export function loadEnvIfNeeded() {
   if (existsSync(file)) process.loadEnvFile(file);
 }
 
-function isLocalUrl(connectionString) {
-  try {
-    const host = new URL(connectionString).hostname;
-    return host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1';
-  } catch {
-    return false;
-  }
+/**
+ * Parses DATABASE_URL once, here, into discrete fields. Query parameters (sslmode, sslrootcert,
+ * host, port ...) are ignored on purpose: pg would let them override the pinned TLS settings, and
+ * a second parser could disagree with ours about the host.
+ */
+export function parseDatabaseUrl(connectionString) {
+  const url = new URL(connectionString);
+  const decode = (value) => decodeURIComponent(value);
+  return {
+    host: decode(url.hostname.replace(/^\[|\]$/g, '')),
+    port: url.port ? Number(url.port) : 5432,
+    user: decode(url.username),
+    password: decode(url.password),
+    database: decode(url.pathname.replace(/^\//, '')) || 'postgres',
+  };
+}
+
+function isLocalHost(host) {
+  return host === 'localhost' || host === '127.0.0.1' || host === '::1';
 }
 
 /** Verified TLS for remote databases; only a localhost database (for example Docker) skips TLS. */
-export function sslOptions(connectionString) {
-  if (isLocalUrl(connectionString)) return false;
+export function sslOptions(host) {
+  if (isLocalHost(host)) return false;
   return { ca: readFileSync(caFile, 'utf8'), rejectUnauthorized: true };
 }
 
@@ -46,9 +58,10 @@ export function clientConfig() {
   if (!connectionString) {
     throw new Error('DATABASE_URL is not set (load it with node --env-file or PRONTO_ENV_FILE)');
   }
+  const target = parseDatabaseUrl(connectionString);
   return {
-    connectionString,
-    ssl: sslOptions(connectionString),
+    ...target,
+    ssl: sslOptions(target.host),
     connectionTimeoutMillis: 15_000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000,
