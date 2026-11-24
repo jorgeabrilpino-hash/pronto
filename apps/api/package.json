@@ -8,9 +8,14 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@pronto/shared": "workspace:*"
+    "@pronto/shared": "workspace:*",
+    "@stellar/stellar-sdk": "^17.4.0",
+    "jose": "^6.2.18",
+    "kysely": "0.29.9",
+    "pg": "8.23.1"
   },
   "devDependencies": {
+    "@types/pg": "8.23.1",
     "@vitest/coverage-v8": "5.1.1"
   }
 }
