@@ -1,0 +1,31 @@
+{
+  "name": "pronto",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "check": "pnpm lint && pnpm typecheck && pnpm test",
+    "db:migrate": "node supabase/scripts/migrate.mjs",
+    "db:seed": "node supabase/scripts/seed.mjs",
+    "db:types": "node supabase/scripts/types.mjs",
+    "test:db": "vitest run supabase/tests",
+    "db:ping": "node supabase/scripts/ping.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.8",
+    "@types/node": "^24.0.0",
+    "@types/pg": "8.23.1",
+    "kysely": "0.29.9",
+    "kysely-codegen": "0.20.0",
+    "pg": "8.23.1",
+    "typescript": "^5.9.0",
+    "vitest": "^5.1.1"
+  }
+}

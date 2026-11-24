@@ -4,3 +4,9 @@ target/
 node_modules/
 .stellar/
 contracts/*/test_snapshots/
+!.env.example
+.secrets/
+dist/
+coverage/
+.vercel/
+*.tsbuildinfo
