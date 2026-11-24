@@ -5,7 +5,7 @@ import { useNavigate, useParams } from 'react-router';
 import { api } from '@/api/endpoints';
 import { ApiError } from '@/api/errors';
 import { useSession } from '@/api/session';
-import { useChainOp } from '@/chain/useChainOp';
+import { assertStatus, useChainOp } from '@/chain/useChainOp';
 import { Amount } from '@/components/Amount';
 import { Button } from '@/components/Button';
 import { ErrorNotice } from '@/components/ErrorNotice';
@@ -119,7 +119,7 @@ export function NewOffer() {
           expiresAt: draft.expiresAt,
         },
         async (hash) => {
-          await api.reconcileOffer(draft.offerIdHex, hash);
+          assertStatus(await api.reconcileOffer(draft.offerIdHex, hash), ['open', 'accepted']);
           await qc.invalidateQueries();
         },
       );

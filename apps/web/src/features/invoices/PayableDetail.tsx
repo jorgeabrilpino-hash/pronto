@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api } from '@/api/endpoints';
 import { useSession } from '@/api/session';
-import { useChainOp } from '@/chain/useChainOp';
+import { assertStatus, useChainOp } from '@/chain/useChainOp';
 import { Button, LinkButton } from '@/components/Button';
 import { ErrorNotice } from '@/components/ErrorNotice';
 import { Field } from '@/components/Field';
@@ -70,7 +70,7 @@ export function PayableDetail() {
     if (!offer || !session) return;
     const p = { kind: 'reclaim' as const, address: session.address, offerIdHex: offer.offerIdHex };
     void op.run(p, async (hash) => {
-      await api.reconcileOffer(offer.offerIdHex, hash);
+      assertStatus(await api.reconcileOffer(offer.offerIdHex, hash), ['reclaimed']);
       await qc.invalidateQueries();
     });
   }

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import type { OpKind, OpParams, StepId } from './operation';
-import { runOperation } from './operation';
+import { ChainError, runOperation } from './operation';
 
 export interface OpState {
   open: boolean;
@@ -48,6 +48,8 @@ export function useChainOp() {
       await after?.(hash);
       setState((s) => ({ ...s, done: true }));
     } catch (error) {
+      // A definitive FAILED means nothing was applied: allow a fresh submission.
+      if (error instanceof ChainError && error.kind === 'failed') sentHash.current = null;
       setState((s) => ({ ...s, error }));
     } finally {
       busy.current = false;
@@ -72,4 +74,9 @@ export function useChainOp() {
 
   const close = useCallback(() => setState(IDLE), []);
   return { state, run, retry, close };
+}
+
+/** Success is what the network says after reconcile, never just that the call returned. */
+export function assertStatus(offer: { chainStatus: string }, ok: string[]): void {
+  if (!ok.includes(offer.chainStatus)) throw new ChainError('failed');
 }
