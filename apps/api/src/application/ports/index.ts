@@ -39,6 +39,7 @@ export interface InvoiceRepository {
   insert(invoice: Invoice): Promise<void>;
   byId(id: string): Promise<Invoice | null>;
   listFor(companyId: string, role: Role, status?: InvoiceStatus): Promise<Invoice[]>;
+  /** `number` is canonical (no leading zeros); implementations compare canonical values. */
   duplicateExists(supplierId: string, series: string, number: string): Promise<boolean>;
   /** Returns null when the stored version differs from `expectedVersion` (concurrent change). */
   update(id: string, expectedVersion: number, patch: InvoicePatch): Promise<Invoice | null>;
@@ -89,7 +90,24 @@ export interface ChainReader {
   contractId(): string;
   /** Current state of the offer in the contract; null if it does not exist. */
   getOffer(offerIdHex: string): Promise<ChainOffer | null>;
-  getTransaction(hash: string): Promise<{ status: 'SUCCESS' | 'FAILED' | 'NOT_FOUND' }>;
+  /**
+   * (B2 fix) `invocation` decodes the contract call the transaction made, when it invoked a
+   * contract: reconciliation stores a hash only if it is this offer's call on our contract.
+   */
+  getTransaction(hash: string): Promise<ChainTransaction>;
+}
+
+/** (B2 fix) Contract call decoded from a transaction. */
+export interface ChainInvocation {
+  contractId: string;
+  fn: 'create_offer' | 'accept' | 'reclaim';
+  offerIdHex: string;
+}
+
+/** (B2 fix) Result of `ChainReader.getTransaction`. */
+export interface ChainTransaction {
+  status: 'SUCCESS' | 'FAILED' | 'NOT_FOUND';
+  invocation?: ChainInvocation;
 }
 
 export interface ChallengeStore {

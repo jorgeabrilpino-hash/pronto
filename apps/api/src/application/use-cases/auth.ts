@@ -21,8 +21,25 @@ import { enforceRateLimit, parseInput, parseOutput, toCompanyDto } from './share
 export const CHALLENGE_TTL_SECONDS = 300;
 /** Session lifetime (section 9): 1 hour. */
 export const SESSION_TTL_SECONDS = 3600;
-/** Rate limit for challenges (section 12): per address. */
-export const CHALLENGE_RATE = { windowSeconds: 60, max: 5 } as const;
+/**
+ * Challenge rate limits (section 12). The address comes from the caller, so a limit keyed
+ * only on it would let anyone lock a victim out. Two limits instead:
+ * - per client (`challenge:client:<clientId>`, derived by the HTTP adapter from the caller
+ *   IP): strict, stops one caller from hammering;
+ * - per address (`challenge:addr:<address>`): much higher, only stops floods, so a third
+ *   party cannot exhaust a victim's logins without a flood from many clients.
+ * When no clientId is given only the per-address limit applies.
+ */
+export const CHALLENGE_CLIENT_RATE = { windowSeconds: 60, max: 10 } as const;
+export const CHALLENGE_ADDRESS_RATE = { windowSeconds: 60, max: 100 } as const;
+/** @deprecated Kept for compatibility; equals CHALLENGE_CLIENT_RATE. */
+export const CHALLENGE_RATE = CHALLENGE_CLIENT_RATE;
+
+/** Server-derived request context. Never read it from the request body. */
+export interface ChallengeContext {
+  /** Opaque caller id, e.g. a hash of the client IP. */
+  clientId?: string;
+}
 
 /** 01 RequestChallenge: public. Creates a single-use nonce and the unsigned challenge. */
 export class RequestChallenge {
@@ -34,13 +51,30 @@ export class RequestChallenge {
     },
   ) {}
 
-  async execute(input: unknown): Promise<z.output<typeof ChallengeResponseSchema>> {
+  /**
+   * `input` is the request body (only `address` is read; extra keys are dropped by the
+   * schema). `context.clientId` must come from the HTTP adapter, never from the body.
+   */
+  async execute(
+    input: unknown,
+    context: ChallengeContext = {},
+  ): Promise<z.output<typeof ChallengeResponseSchema>> {
     const { address } = parseInput(ChallengeRequestSchema, input);
+    const clientId = context.clientId;
+    if (clientId !== undefined && clientId !== '') {
+      // Checked first so a throttled client does not consume the address budget.
+      await enforceRateLimit(
+        this.deps.rateLimiter,
+        `challenge:client:${clientId}`,
+        CHALLENGE_CLIENT_RATE.windowSeconds,
+        CHALLENGE_CLIENT_RATE.max,
+      );
+    }
     await enforceRateLimit(
       this.deps.rateLimiter,
-      `challenge:${address}`,
-      CHALLENGE_RATE.windowSeconds,
-      CHALLENGE_RATE.max,
+      `challenge:addr:${address}`,
+      CHALLENGE_ADDRESS_RATE.windowSeconds,
+      CHALLENGE_ADDRESS_RATE.max,
     );
     const { nonce, expiresAt } = await this.deps.challenges.create(address, CHALLENGE_TTL_SECONDS);
     return parseOutput(ChallengeResponseSchema, {

@@ -16,6 +16,7 @@ import type { ChainOffer, Company, Invoice, Offer } from '../../domain/types';
 import { formatMoney } from '../../domain/values';
 import type {
   AuditLog,
+  ChainInvocation,
   ChainReader,
   Clock,
   CompanyRepository,
@@ -29,6 +30,7 @@ import type { OfferRefresher } from './invoices';
 import {
   type Actor,
   enforceRateLimit,
+  failedOfferLiveOnChain,
   loadCompany,
   loadInvoice,
   parseInput,
@@ -44,6 +46,14 @@ type OfferDto = z.output<typeof OfferSchema>;
 export const PENDING_TIMEOUT_SECONDS = 600;
 /** The chain is read at most once per this interval per offer (section 8). */
 export const RECONCILE_MIN_INTERVAL_SECONDS = 15;
+/** A `failed` offer is re-read from the chain while it is younger than this. */
+export const FAILED_RECHECK_MAX_AGE_SECONDS = 7 * 86_400;
+/** Contract function that leads to each chain status (tx evidence check). */
+export const EVIDENCE_FN: Record<'open' | 'accepted' | 'reclaimed', ChainInvocation['fn']> = {
+  open: 'create_offer',
+  accepted: 'accept',
+  reclaimed: 'reclaim',
+};
 /** Explicit reconcile calls per company (section 12). */
 export const RECONCILE_RATE = { windowSeconds: 60, max: 60 } as const;
 
@@ -86,7 +96,8 @@ export class PrepareOffer {
         status: invoice.status,
       });
     }
-    if ((await this.deps.offers.byInvoice(invoice.id)).some(isActiveOffer)) {
+    const existing = await this.deps.offers.byInvoice(invoice.id);
+    if (existing.some(isActiveOffer) || (await failedOfferLiveOnChain(this.deps.chain, existing))) {
       throw new DomainError('OFFER_EXISTS');
     }
     const now = this.deps.clock.now();
@@ -136,12 +147,18 @@ export class PrepareOffer {
 /**
  * 12 ReconcileOffer (section 8). Reads the current contract state first, verifies it
  * against the draft and only then writes. The browser's word is never trusted.
- * - Terminal offers (accepted, reclaimed, failed) are returned unchanged: idempotent.
+ * - Accepted and reclaimed offers are final and returned unchanged: idempotent.
+ * - A `failed` offer younger than 7 days is re-read: if the chain holds a matching offer
+ *   (contract id, buyer, supplier, face, net) it takes the real status and is audited as
+ *   OFFER_RECOVERED_AFTER_FAILED; otherwise it stays failed.
  * - The chain is read at most once per 15 s per offer; inside that window the stored
  *   state is returned without a read.
  * - Mismatch (contract id, wallets, amounts, expiry) -> `failed` + audit + CHAIN_MISMATCH.
  * - `pending` not on chain after 10 minutes -> `failed`.
- * - The tx hash is evidence: stored only when getTransaction reports SUCCESS.
+ * - The tx hash is evidence: stored only when getTransaction reports SUCCESS for a call to
+ *   our contract, on this offer, with the function that leads to the new status
+ *   (open: create_offer, accepted: accept, reclaimed: reclaim). Anything else is ignored
+ *   and audited as TX_EVIDENCE_REJECTED.
  */
 export class ReconcileOffer implements OfferRefresher {
   constructor(private readonly deps: OfferDeps & { rateLimiter: RateLimiter }) {}
@@ -181,13 +198,22 @@ export class ReconcileOffer implements OfferRefresher {
     actorCompanyId: string | null,
     txHash: string | undefined,
   ): Promise<Offer> {
-    if (!isActiveOffer(offer) || offer.chainStatus === 'accepted') return offer;
+    if (offer.chainStatus === 'accepted' || offer.chainStatus === 'reclaimed') return offer;
     const now = this.deps.clock.now();
+    if (
+      offer.chainStatus === 'failed' &&
+      now.getTime() - offer.createdAt.getTime() >= FAILED_RECHECK_MAX_AGE_SECONDS * 1000
+    ) {
+      return offer;
+    }
     if (
       offer.lastCheckedAt !== null &&
       now.getTime() - offer.lastCheckedAt.getTime() < RECONCILE_MIN_INTERVAL_SECONDS * 1000
     ) {
       return offer;
+    }
+    if (offer.chainStatus === 'failed') {
+      return this.recheckFailed(offer, invoice, actorCompanyId, txHash, now);
     }
     if (offer.contractId !== this.deps.chain.contractId()) {
       return this.mismatch(offer, actorCompanyId, ['contractId'], now);
@@ -228,11 +254,7 @@ export class ReconcileOffer implements OfferRefresher {
     if (bad.length > 0) return this.mismatch(offer, actorCompanyId, bad, now);
 
     const patch: OfferPatch = { chainStatus: onChain.status, lastCheckedAt: now };
-    if (txHash !== undefined && (await this.txSucceeded(txHash))) {
-      if (onChain.status === 'open' && offer.txCreate === null) patch.txCreate = txHash;
-      if (onChain.status === 'accepted' && offer.txAccept === null) patch.txAccept = txHash;
-      if (onChain.status === 'reclaimed' && offer.txReclaim === null) patch.txReclaim = txHash;
-    }
+    await this.applyEvidence(patch, offer, onChain.status, txHash, actorCompanyId);
     const updated = await this.deps.offers.update(offer.offerIdHex, patch);
     if (updated.chainStatus !== offer.chainStatus) {
       await this.deps.audit.record({
@@ -245,12 +267,91 @@ export class ReconcileOffer implements OfferRefresher {
     return updated;
   }
 
-  private async txSucceeded(hash: string): Promise<boolean> {
+  /**
+   * Re-reads a failed offer. Only a matching on-chain offer recovers it; a missing or
+   * different one leaves it failed and only records the check time.
+   */
+  private async recheckFailed(
+    offer: Offer,
+    invoice: Invoice,
+    actorCompanyId: string | null,
+    txHash: string | undefined,
+    now: Date,
+  ): Promise<Offer> {
+    let onChain: ChainOffer | null;
     try {
-      return (await this.deps.chain.getTransaction(hash)).status === 'SUCCESS';
+      onChain = await this.deps.chain.getOffer(offer.offerIdHex);
     } catch {
-      return false;
+      throw new DomainError('CHAIN_UNAVAILABLE');
     }
+    const [supplier, buyer] = await Promise.all([
+      loadCompany(this.deps.companies, invoice.supplierId),
+      loadCompany(this.deps.companies, invoice.buyerId),
+    ]);
+    // Same checks as a first reconciliation (expiry included), so an offer that failed for a
+    // mismatch can never be revived by that same mismatched chain state.
+    if (
+      onChain === null ||
+      offer.contractId !== this.deps.chain.contractId() ||
+      mismatchedFields(onChain, offer, invoice, supplier, buyer).length > 0
+    ) {
+      return this.deps.offers.update(offer.offerIdHex, { lastCheckedAt: now });
+    }
+    const patch: OfferPatch = { chainStatus: onChain.status, lastCheckedAt: now };
+    await this.applyEvidence(patch, offer, onChain.status, txHash, actorCompanyId);
+    const recovered = await this.deps.offers.update(offer.offerIdHex, patch);
+    await this.deps.audit.record({
+      kind: 'OFFER_RECOVERED_AFTER_FAILED',
+      actorCompanyId,
+      subject: offer.offerIdHex,
+      data: { to: onChain.status },
+    });
+    return recovered;
+  }
+
+  /** Adds the tx hash to the patch only when it proves this offer's call on our contract. */
+  private async applyEvidence(
+    patch: OfferPatch,
+    offer: Offer,
+    status: ChainOffer['status'],
+    txHash: string | undefined,
+    actorCompanyId: string | null,
+  ): Promise<void> {
+    if (txHash === undefined) return;
+    const reason = await this.evidenceProblem(txHash, offer, status);
+    if (reason !== null) {
+      await this.deps.audit.record({
+        kind: 'TX_EVIDENCE_REJECTED',
+        actorCompanyId,
+        subject: offer.offerIdHex,
+        data: { txHash, reason, status },
+      });
+      return;
+    }
+    if (status === 'open' && offer.txCreate === null) patch.txCreate = txHash;
+    if (status === 'accepted' && offer.txAccept === null) patch.txAccept = txHash;
+    if (status === 'reclaimed' && offer.txReclaim === null) patch.txReclaim = txHash;
+  }
+
+  /** Null when the transaction is valid evidence for `status`; otherwise the reason. */
+  private async evidenceProblem(
+    txHash: string,
+    offer: Offer,
+    status: ChainOffer['status'],
+  ): Promise<string | null> {
+    let tx: Awaited<ReturnType<ChainReader['getTransaction']>>;
+    try {
+      tx = await this.deps.chain.getTransaction(txHash);
+    } catch {
+      return 'unavailable';
+    }
+    if (tx.status !== 'SUCCESS') return `status ${tx.status}`;
+    const inv = tx.invocation;
+    if (inv === undefined) return 'no contract invocation';
+    if (inv.contractId !== this.deps.chain.contractId()) return 'contract';
+    if (inv.offerIdHex !== offer.offerIdHex) return 'offer';
+    if (inv.fn !== EVIDENCE_FN[status]) return 'function';
+    return null;
   }
 
   private async mismatch(

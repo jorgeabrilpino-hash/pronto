@@ -12,6 +12,7 @@ import type { Attachment, Company, Invoice, Offer } from '../../domain/types';
 import { formatMoney } from '../../domain/values';
 import type {
   AttachmentRepository,
+  ChainReader,
   Clock,
   CompanyRepository,
   InvoiceRepository,
@@ -168,4 +169,28 @@ export async function toInvoiceDto(
     offer: offer === null ? null : toOfferDto(offer),
     createdAt: invoice.createdAt.toISOString(),
   });
+}
+
+/**
+ * True when one of the invoice's `failed` offers is open or accepted on chain: it still
+ * holds or has paid funds, so it counts as active. Fails closed: an unreadable chain gives
+ * CHAIN_UNAVAILABLE instead of allowing a second offer or a cancellation.
+ */
+export async function failedOfferLiveOnChain(
+  chain: ChainReader,
+  offers: readonly Offer[],
+): Promise<boolean> {
+  for (const o of offers) {
+    if (o.chainStatus !== 'failed') continue;
+    let onChain: Awaited<ReturnType<ChainReader['getOffer']>>;
+    try {
+      onChain = await chain.getOffer(o.offerIdHex);
+    } catch {
+      throw new DomainError('CHAIN_UNAVAILABLE');
+    }
+    if (onChain !== null && (onChain.status === 'open' || onChain.status === 'accepted')) {
+      return true;
+    }
+  }
+  return false;
 }

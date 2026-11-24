@@ -107,11 +107,22 @@ export interface InvoiceRef {
   number: string;
 }
 
-/** Series: 4 characters A-Z/0-9 (e.g. F001). Number: 1 to 8 digits. */
+/**
+ * Canonical invoice number: 1 to 8 digits without leading zeros ("0123" -> "123"), or null
+ * when the input is not digits or is all zeros. Matches the DB check `^[1-9][0-9]{0,7}$`.
+ */
+export function canonicalInvoiceNumber(number: string): string | null {
+  const n = number.trim();
+  if (!/^\d{1,8}$/.test(n)) return null;
+  const canonical = n.replace(/^0+/, '');
+  return canonical === '' ? null : canonical;
+}
+
+/** Series: 4 characters A-Z/0-9 (e.g. F001). Number: canonical, 1 to 8 digits, not zero. */
 export function parseInvoiceRef(series: string, number: string): InvoiceRef {
   const s = series.trim().toUpperCase();
-  const n = number.trim();
-  if (!/^[A-Z0-9]{4}$/.test(s) || !/^\d{1,8}$/.test(n)) {
+  const n = canonicalInvoiceNumber(number);
+  if (!/^[A-Z0-9]{4}$/.test(s) || n === null) {
     throw new DomainError('VALIDATION_ERROR', 'Invalid invoice reference', { series, number });
   }
   return { series: s, number: n };

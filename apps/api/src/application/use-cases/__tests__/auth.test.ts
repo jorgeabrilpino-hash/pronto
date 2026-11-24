@@ -1,7 +1,12 @@
 import { ChallengeResponseSchema, VerifyResponseSchema } from '@pronto/shared';
 import { describe, expect, it } from 'vitest';
 import { FakeSignatureVerifier } from '../../../adapters/memory';
-import { CHALLENGE_RATE, CHALLENGE_TTL_SECONDS, SESSION_TTL_SECONDS } from '../auth';
+import {
+  CHALLENGE_ADDRESS_RATE,
+  CHALLENGE_CLIENT_RATE,
+  CHALLENGE_TTL_SECONDS,
+  SESSION_TTL_SECONDS,
+} from '../auth';
 import { expectCode, makeKit, wallet } from './kit';
 
 describe('01 RequestChallenge and 02 VerifyChallenge', () => {
@@ -95,14 +100,50 @@ describe('01 RequestChallenge and 02 VerifyChallenge', () => {
     );
   });
 
-  it('challenges are rate limited per address', async () => {
+  it('per-client limit is strict; another client can still log the same address in', async () => {
     const { uc, a } = makeKit();
     const address = wallet(1);
-    for (let i = 0; i < CHALLENGE_RATE.max; i++) await uc.requestChallenge.execute({ address });
+    const attacker = { clientId: 'ip-attacker' };
+    for (let i = 0; i < CHALLENGE_CLIENT_RATE.max; i++) {
+      await uc.requestChallenge.execute({ address }, attacker);
+    }
+    await expectCode(uc.requestChallenge.execute({ address }, attacker), 'RATE_LIMITED');
+    // The victim, from its own client, is not locked out.
+    const ch = await uc.requestChallenge.execute({ address }, { clientId: 'ip-victim' });
+    expect(ch.nonce).toBeTruthy();
+    a.clock.advanceSeconds(CHALLENGE_CLIENT_RATE.windowSeconds);
+    await uc.requestChallenge.execute({ address }, attacker);
+  });
+
+  it('a clientId in the body is ignored; the per-address flood limit applies', async () => {
+    const { uc } = makeKit();
+    const address = wallet(1);
+    for (let i = 0; i < CHALLENGE_ADDRESS_RATE.max; i++) {
+      await uc.requestChallenge.execute({ address, clientId: `body-${i}` });
+    }
     await expectCode(uc.requestChallenge.execute({ address }), 'RATE_LIMITED');
-    await uc.requestChallenge.execute({ address: wallet(2) });
-    a.clock.advanceSeconds(CHALLENGE_RATE.windowSeconds);
-    await uc.requestChallenge.execute({ address });
+    await expectCode(
+      uc.requestChallenge.execute({ address }, { clientId: 'fresh-client' }),
+      'RATE_LIMITED',
+    );
+    await uc.requestChallenge.execute({ address: wallet(2) }, { clientId: 'fresh-client' });
+  });
+
+  it('a throttled client does not consume the address budget', async () => {
+    const { uc, a } = makeKit();
+    const address = wallet(1);
+    for (let i = 0; i < CHALLENGE_CLIENT_RATE.max + 50; i++) {
+      await uc.requestChallenge.execute({ address }, { clientId: 'noisy' }).catch(() => undefined);
+    }
+    const used = await a.rateLimiter.hit(
+      `challenge:addr:${address}`,
+      CHALLENGE_ADDRESS_RATE.windowSeconds,
+      CHALLENGE_ADDRESS_RATE.max,
+    );
+    expect(used.remaining).toBe(CHALLENGE_ADDRESS_RATE.max - CHALLENGE_CLIENT_RATE.max - 1);
+    expect(CHALLENGE_ADDRESS_RATE.max).toBeGreaterThan(CHALLENGE_CLIENT_RATE.max * 5);
+    // An empty clientId counts as absent.
+    await uc.requestChallenge.execute({ address }, { clientId: '' });
   });
 
   it('invalid input is VALIDATION_ERROR; missing or expired token is UNAUTHENTICATED', async () => {
