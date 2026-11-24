@@ -124,11 +124,6 @@ export function ReceivableDetail() {
       ) : (
         <div className="h-64 rounded-card bg-line/60" aria-busy="true" />
       )}
-      {inv?.displayStatus === 'offer_open' && offer ? (
-        <p className="rounded-card border border-gold bg-gold/10 p-4 font-semibold">
-          Te ofrecen <span className="tabular">{formatUsdc(offer.netAmount)}</span> hoy
-        </p>
-      ) : null}
       {inv?.displayStatus === 'rejected' && inv.rejectionReason ? (
         <p className="rounded-card border border-danger bg-danger-tint p-4 text-danger">
           {inv.rejectionReason}

@@ -94,7 +94,7 @@ export function StepData({ buyer, doc, prefill, onBack, onSent }: Props) {
     >
       <h2 className="text-2xl font-bold">Datos de la factura</h2>
       <p className="text-sm text-muted">Para {buyer.legalName}</p>
-      <div className="grid grid-cols-[1fr_1.4fr] gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-3">
         <Field
           label="Serie"
           mono
@@ -122,7 +122,7 @@ export function StepData({ buyer, doc, prefill, onBack, onSent }: Props) {
         onChange={(e) => setAmount(e.target.value)}
         error={show(errs.amount)}
       />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3">
         <Field
           label="Emisión"
           mono
