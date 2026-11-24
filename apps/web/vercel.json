@@ -6,7 +6,7 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "source": "/((?!assets/|mockServiceWorker.js|favicon.svg|mock/).*)",
+      "source": "/((?!assets/|favicon.svg|mock/).*)",
       "destination": "/index.html"
     }
   ]

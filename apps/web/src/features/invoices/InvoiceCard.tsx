@@ -7,6 +7,16 @@ import { ReceiptCard } from '@/components/ReceiptCard';
 import { formatBps, formatDate, formatInvoiceRef } from '@/lib/format';
 import { StatusChip } from './status';
 
+/** Documents open only over https (or same origin in the demo), never with a live opener. */
+function safeUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' || u.origin === window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
 function DocumentLink({ attachmentId }: { attachmentId: string }) {
   const [busy, setBusy] = useState(false);
   async function open() {
@@ -14,7 +24,11 @@ function DocumentLink({ attachmentId }: { attachmentId: string }) {
     const tab = window.open('', '_blank');
     try {
       const { url } = await api.attachmentUrl(attachmentId);
-      if (tab) tab.location.href = url;
+      if (!safeUrl(url)) throw new Error('unsafe url');
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = url;
+      }
     } catch {
       tab?.close();
     } finally {
@@ -53,7 +67,7 @@ export function InvoiceCard({ inv, side }: { inv: Invoice; side: Role }) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <Label>{side === 'supplier' ? 'Cliente' : 'Proveedor'}</Label>
-              <p className="truncate text-lg font-semibold">{other.legalName}</p>
+              <p className="text-lg font-semibold">{other.legalName}</p>
               <p className="tabular text-sm text-muted">RUC {other.ruc}</p>
             </div>
             <StatusChip inv={inv} role={side} />

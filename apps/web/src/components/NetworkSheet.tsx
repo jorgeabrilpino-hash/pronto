@@ -41,7 +41,7 @@ export function NetworkSheet({ state, note, onRetry, onClose }: Props) {
 
   return (
     <Sheet open={state.open} title={state.kind ? TITLES[state.kind] : ''}>
-      {note ? <p className="tabular text-sm text-muted">{note}</p> : null}
+      {note ? <p className="tabular break-all text-sm text-muted">{note}</p> : null}
       <ol className="flex flex-col gap-3">
         {STEPS.map((s, i) => {
           const done = i < idx;

@@ -2,14 +2,21 @@
   "root": false,
   "extends": "//",
   "files": {
-    "includes": ["**", "!dist", "!public/mockServiceWorker.js"]
+    "includes": [
+      "**",
+      "!dist"
+    ]
   },
   "css": {
-    "parser": { "tailwindDirectives": true }
+    "parser": {
+      "tailwindDirectives": true
+    }
   },
   "linter": {
     "rules": {
-      "complexity": { "noImportantStyles": "off" }
+      "complexity": {
+        "noImportantStyles": "off"
+      }
     }
   }
 }

@@ -453,7 +453,7 @@ export function attachmentUrl(address: string | null, id: string, origin: string
         (i) => i.attachmentIds.includes(id) && (i.supplierId === me.id || i.buyerId === me.id),
       ));
   if (!a || !visible) throw new DomainError('ATTACHMENT_INVALID');
-  return { url: `${origin}/mock/${a.kind === 'image' ? 'factura-demo.png' : 'factura-demo.pdf'}` };
+  return { url: `${origin}/mock/${a.kind === 'image' ? 'factura-demo.svg' : 'factura-demo.pdf'}` };
 }
 
 // ---- Invoices ------------------------------------------------------------------------

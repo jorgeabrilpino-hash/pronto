@@ -30,17 +30,20 @@ const IDLE: OpState = {
 export function useChainOp() {
   const [state, setState] = useState<OpState>(IDLE);
   const busy = useRef(false);
+  const sentHash = useRef<string | null>(null);
   const last = useRef<{ p: OpParams; after?: (hash: string) => Promise<void> } | null>(null);
 
   const run = useCallback(async (p: OpParams, after?: (hash: string) => Promise<void>) => {
     if (busy.current) return;
     busy.current = true;
+    sentHash.current = null;
     last.current = after ? { p, after } : { p };
     setState({ ...IDLE, open: true, kind: p.kind, step: 'prepare', startedAt: Date.now() });
     try {
-      const hash = await runOperation(p, (step, txHash) =>
-        setState((s) => ({ ...s, step, txHash: txHash ?? s.txHash })),
-      );
+      const hash = await runOperation(p, (step, txHash) => {
+        if (txHash) sentHash.current = txHash;
+        setState((s) => ({ ...s, step, txHash: txHash ?? s.txHash }));
+      });
       setState((s) => ({ ...s, txHash: hash }));
       await after?.(hash);
       setState((s) => ({ ...s, done: true }));
@@ -52,7 +55,19 @@ export function useChainOp() {
   }, []);
 
   const retry = useCallback(() => {
-    if (last.current) void run(last.current.p, last.current.after);
+    const l = last.current;
+    if (!l) return;
+    // A transaction that already confirmed, or was sent and not yet resolved, is never
+    // submitted twice: only the reconcile runs, and the server reads the network.
+    const sent = sentHash.current;
+    if (sent && l.after) {
+      setState((s) => ({ ...s, error: null, done: false }));
+      l.after(sent)
+        .then(() => setState((s) => ({ ...s, done: true })))
+        .catch((error) => setState((s) => ({ ...s, error })));
+      return;
+    }
+    void run(l.p, l.after);
   }, [run]);
 
   const close = useCallback(() => setState(IDLE), []);

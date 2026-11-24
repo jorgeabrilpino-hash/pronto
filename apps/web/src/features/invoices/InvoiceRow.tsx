@@ -24,7 +24,7 @@ export function InvoiceRow({
         }`}
       >
         <span className="flex min-w-0 flex-col">
-          <span className="truncate font-semibold">{other.legalName}</span>
+          <span className="line-clamp-2 font-semibold">{other.legalName}</span>
           <span className="tabular text-sm text-muted">
             {formatInvoiceRef(inv.series, inv.number)} · {formatDate(inv.dueDate)}
           </span>

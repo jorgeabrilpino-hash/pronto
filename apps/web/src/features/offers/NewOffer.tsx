@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { api } from '@/api/endpoints';
+import { ApiError } from '@/api/errors';
 import { useSession } from '@/api/session';
 import { useChainOp } from '@/chain/useChainOp';
 import { Amount } from '@/components/Amount';
@@ -12,7 +13,7 @@ import { IconAlert } from '@/components/icons';
 import { NetworkSheet } from '@/components/NetworkSheet';
 import { Screen } from '@/components/Screen';
 import { useInvoice } from '@/features/invoices/useInvoices';
-import { daysBetween, formatAnnual, formatBps, shortWallet } from '@/lib/format';
+import { daysBetween, formatAnnual, formatBps } from '@/lib/format';
 import { annualizedBps, discountFromBps, formatUsdc, netFromBps, parseMoney } from '@/lib/money';
 
 const DISCOUNTS = [100, 150, 200];
@@ -93,7 +94,18 @@ export function NewOffer() {
     setError(null);
     try {
       const draft = await api.draftOffer(id, { discountBps: bps, validityDays: days });
-      setNote(`Pago a ${inv.supplier.legalName} · ${shortWallet(draft.supplierWallet)}`);
+      const maxExpiry = Date.now() + (days + 1) * 86_400_000;
+      const expires = Date.parse(draft.expiresAt);
+      if (
+        parseMoney(draft.netAmount) !== net ||
+        draft.discountBps !== bps ||
+        !(expires > Date.now() && expires <= maxExpiry)
+      ) {
+        throw new ApiError('CHAIN_MISMATCH', 409);
+      }
+      setNote(
+        `Pagas ${formatUsdc(net)} a ${inv.supplier.legalName} · billetera ${draft.supplierWallet}`,
+      );
       setBusy(false);
       await op.run(
         {
