@@ -6,3 +6,8 @@ export const NETWORK_MESSAGE: UserMessage = { message: 'La red no responde', act
 export function messageFor(code: ErrorCode): UserMessage {
   return MESSAGES_ES[code];
 }
+
+export const WALLET_MESSAGES = {
+  missing: { message: 'No encontramos tu billetera', action: 'Reintentar' },
+  rejected: { message: 'No se firmó', action: 'Reintentar' },
+} satisfies Record<'missing' | 'rejected', UserMessage>;

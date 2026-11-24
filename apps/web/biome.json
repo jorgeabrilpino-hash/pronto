@@ -2,7 +2,7 @@
   "root": false,
   "extends": "//",
   "files": {
-    "includes": ["**", "!public/mockServiceWorker.js"]
+    "includes": ["**", "!dist", "!public/mockServiceWorker.js"]
   },
   "css": {
     "parser": { "tailwindDirectives": true }
