@@ -4,6 +4,12 @@ import { Register } from '@/features/auth/Register';
 import { RequireAuth } from '@/features/auth/RequireAuth';
 import { MyCode } from '@/features/code/MyCode';
 import { Funds } from '@/features/funds/Funds';
+import { Home } from '@/features/home/Home';
+import { NewInvoice } from '@/features/invoices/new/NewInvoice';
+import { PayableDetail } from '@/features/invoices/PayableDetail';
+import { ReceivableDetail } from '@/features/invoices/ReceivableDetail';
+import { NewOffer } from '@/features/offers/NewOffer';
+import { Receipt } from '@/features/offers/Receipt';
 import { Placeholder } from './Placeholder';
 
 export const routeTable: RouteObject[] = [
@@ -15,12 +21,12 @@ export const routeTable: RouteObject[] = [
     element: <RequireAuth />,
     children: [
       { path: '/fondos', element: <Funds /> },
-      { path: '/app', element: <Placeholder title="Inicio" /> },
-      { path: '/facturas/nueva', element: <Placeholder title="Nueva factura" /> },
-      { path: '/cobrar/:id', element: <Placeholder title="Por cobrar" /> },
-      { path: '/pagar/:id', element: <Placeholder title="Por pagar" /> },
-      { path: '/pagar/:id/oferta', element: <Placeholder title="Nueva oferta" /> },
-      { path: '/comprobante/:offerId', element: <Placeholder title="Comprobante" /> },
+      { path: '/app', element: <Home /> },
+      { path: '/facturas/nueva', element: <NewInvoice /> },
+      { path: '/cobrar/:id', element: <ReceivableDetail /> },
+      { path: '/pagar/:id', element: <PayableDetail /> },
+      { path: '/pagar/:id/oferta', element: <NewOffer /> },
+      { path: '/comprobante/:offerId', element: <Receipt /> },
       { path: '/mi-codigo', element: <MyCode /> },
       { path: '/contactos', element: <Placeholder title="Contactos" /> },
       { path: '/ajustes', element: <Placeholder title="Ajustes" /> },

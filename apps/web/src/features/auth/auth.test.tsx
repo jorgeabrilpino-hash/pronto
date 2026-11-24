@@ -9,6 +9,7 @@ import { resetMockApi, server } from '@/mocks/server';
 import { routeTable } from '@/routes/router';
 import { selectMockAccount } from '@/wallet/mock';
 
+vi.mock('@/chain/challenge', () => ({ assertChallenge: () => undefined }));
 vi.mock('@/wallet', async () => ({ wallet: (await import('@/wallet/mock')).mockWallet }));
 
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));

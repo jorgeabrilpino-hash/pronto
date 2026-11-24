@@ -1,5 +1,5 @@
 import type { ErrorCode } from '@pronto/shared';
-import { messageFor, NETWORK_MESSAGE, WALLET_MESSAGES } from '@/lib/messages';
+import { CHAIN_MESSAGES, messageFor, NETWORK_MESSAGE, WALLET_MESSAGES } from '@/lib/messages';
 import { WalletError } from '@/wallet/types';
 
 /** Error with a stable code. The screen shows `MESSAGES_ES[code]`, never the server text. */
@@ -34,6 +34,11 @@ export class NetworkError extends Error {
 export function userMessage(error: unknown): { message: string; action: string } {
   if (error instanceof ApiError) return messageFor(error.code);
   if (error instanceof NetworkError) return NETWORK_MESSAGE;
+  if (error instanceof Error && error.name === 'ChallengeError')
+    return messageFor('SIGNATURE_INVALID');
+  if (error instanceof Error && error.name === 'ChainError') {
+    return CHAIN_MESSAGES[(error as Error & { kind: 'failed' | 'timeout' }).kind];
+  }
   if (error instanceof WalletError) return WALLET_MESSAGES[error.kind];
   return messageFor('INTERNAL');
 }

@@ -88,3 +88,15 @@ a {
     transform: rotate(360deg);
   }
 }
+
+@media print {
+  header,
+  nav,
+  .sticky.bottom-0 {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff;
+  }
+}

@@ -20,13 +20,17 @@ export function Sheet({ open, title, children, onClose }: SheetProps) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
-      <button
-        type="button"
-        aria-label="Cerrar"
-        tabIndex={-1}
-        onClick={onClose}
-        className="absolute inset-0 bg-ink/40"
-      />
+      {onClose ? (
+        <button
+          type="button"
+          aria-label="Cerrar fondo"
+          tabIndex={-1}
+          onClick={onClose}
+          className="absolute inset-0 bg-ink/40"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-ink/40" />
+      )}
       <div
         role="dialog"
         aria-modal="true"

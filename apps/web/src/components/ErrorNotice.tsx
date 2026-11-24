@@ -6,7 +6,7 @@ interface Props {
   error: unknown;
   /** Overrides the button label and handler (one sentence, one button). */
   onAction?: () => void;
-  actionLabel?: string;
+  actionLabel?: string | undefined;
 }
 
 /** One sentence and one button. No codes, no traces (DESIGN.md section 6). */

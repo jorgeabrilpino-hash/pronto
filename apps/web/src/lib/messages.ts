@@ -11,3 +11,8 @@ export const WALLET_MESSAGES = {
   missing: { message: 'No encontramos tu billetera', action: 'Reintentar' },
   rejected: { message: 'No se firmó', action: 'Reintentar' },
 } satisfies Record<'missing' | 'rejected', UserMessage>;
+
+export const CHAIN_MESSAGES = {
+  failed: { message: 'La operación no se completó', action: 'Reintentar' },
+  timeout: { message: 'La red tarda más de lo normal', action: 'Revisar' },
+} satisfies Record<'failed' | 'timeout', UserMessage>;

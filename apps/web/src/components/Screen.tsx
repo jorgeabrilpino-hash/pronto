@@ -16,7 +16,7 @@ export function TestnetChip() {
 interface TopBarProps {
   title: string;
   /** Show the back arrow: `true` goes back in history, a string goes to that path. */
-  back?: boolean | string;
+  back?: boolean | string | (() => void);
   right?: ReactNode;
 }
 
@@ -29,7 +29,11 @@ export function TopBar({ title, back = true, right }: TopBarProps) {
           <button
             type="button"
             aria-label="Volver"
-            onClick={() => (typeof back === 'string' ? navigate(back) : navigate(-1))}
+            onClick={() => {
+              if (typeof back === 'function') back();
+              else if (typeof back === 'string') navigate(back);
+              else navigate(-1);
+            }}
             className="flex size-11 items-center justify-center rounded-full active:bg-pressed"
           >
             <IconBack />
@@ -44,7 +48,7 @@ export function TopBar({ title, back = true, right }: TopBarProps) {
 
 interface ScreenProps {
   title: string;
-  back?: boolean | string;
+  back?: boolean | string | (() => void);
   right?: ReactNode;
   /** Fixed bottom area: the single primary button of the screen. */
   footer?: ReactNode;
