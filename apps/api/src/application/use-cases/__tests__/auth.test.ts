@@ -35,6 +35,7 @@ describe('01 RequestChallenge and 02 VerifyChallenge', () => {
       ruc: '20100070970',
       legalName: 'Imprenta Sur SAC',
       sector: 'Imprenta',
+      profile: 'both',
     });
     const ch2 = await uc.requestChallenge.execute({ address });
     const res2 = await uc.verifyChallenge.execute({

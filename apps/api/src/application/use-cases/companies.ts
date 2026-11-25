@@ -54,6 +54,7 @@ export class RegisterCompany {
       wallet: caller.address,
       code,
       fichaPublica: true,
+      profile: req.profile,
       createdAt: this.deps.clock.now(),
     };
     await this.deps.companies.insert(company);
@@ -83,19 +84,22 @@ export class GetMe {
   }
 }
 
-/** 04 UpdateSettings: public profile on or off. */
+/** 04 UpdateSettings: public ficha on or off, and the company profile. */
 export class UpdateSettings {
   constructor(private readonly deps: { companies: CompanyRepository; audit: AuditLog }) {}
 
   async execute(actor: Actor | null, input: unknown): Promise<z.output<typeof CompanySchema>> {
     const me = await requireCompany(this.deps.companies, actor);
-    const { fichaPublica } = parseInput(UpdateSettingsRequestSchema, input);
-    const updated = await this.deps.companies.update(me.id, { fichaPublica });
+    const req = parseInput(UpdateSettingsRequestSchema, input);
+    const patch: { fichaPublica?: boolean; profile?: Company['profile'] } = {};
+    if (req.fichaPublica !== undefined) patch.fichaPublica = req.fichaPublica;
+    if (req.profile !== undefined) patch.profile = req.profile;
+    const updated = await this.deps.companies.update(me.id, patch);
     await this.deps.audit.record({
       kind: 'company.settings_updated',
       actorCompanyId: me.id,
       subject: me.id,
-      data: { fichaPublica },
+      data: { ...patch },
     });
     return toCompanyDto(updated);
   }

@@ -177,8 +177,26 @@ describe('companies', () => {
     ['code without the PR- prefix', { code: 'XX-7KM2QX' }, 'companies_code_format'],
     ['code with 5 characters', { code: 'PR-7KM2Q' }, 'companies_code_format'],
     ['one-character legal name', { legal_name: 'A' }, 'companies_legal_name_len'],
+    ['an unknown profile', { profile: 'seller' }, 'companies_profile_check'],
+    ['an uppercase profile', { profile: 'BUYER' }, 'companies_profile_check'],
+    ['an empty profile', { profile: '' }, 'companies_profile_check'],
   ])('rejects %s', async (_label, override, name) => {
     await expectViolation('companies', companyRow(override), CHECK, name);
+  });
+
+  it('defaults profile to both and accepts supplier, buyer and both', async () => {
+    expect((await insert('companies', companyRow())).profile).toBe('both');
+    for (const profile of ['supplier', 'buyer', 'both']) {
+      expect((await insert('companies', companyRow({ profile }))).profile).toBe(profile);
+    }
+  });
+
+  it('rejects a null profile', async () => {
+    const err = await violation(
+      'insert into public.companies (ruc, legal_name, sector, wallet, code, profile) values ($1, $2, $3, $4, $5, null)',
+      Object.values(companyRow()),
+    );
+    expect(err.code).toBe('23502');
   });
 
   it('enforces unique ruc, wallet and code', async () => {

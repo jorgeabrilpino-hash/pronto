@@ -108,7 +108,10 @@ export class InMemoryCompanyRepository implements CompanyRepository {
     }
     this.rows.set(company.id, copy(company));
   }
-  async update(id: string, patch: Partial<Pick<Company, 'fichaPublica'>>): Promise<Company> {
+  async update(
+    id: string,
+    patch: Partial<Pick<Company, 'fichaPublica' | 'profile'>>,
+  ): Promise<Company> {
     const c = this.rows.get(id);
     if (c === undefined) throw new DomainError('COMPANY_NOT_FOUND');
     const next = { ...c, ...patch };
@@ -204,8 +207,10 @@ export class InMemoryOfferRepository implements OfferRepository {
   async update(offerIdHex: string, patch: OfferPatch): Promise<Offer> {
     const o = this.rows.get(offerIdHex);
     if (o === undefined) throw new DomainError('INVOICE_NOT_FOUND', 'Offer not found');
-    const next: Offer = { ...o, ...patch };
     const at = this.clock.now();
+    // Mirrors the Postgres adapter: the first recorded accept stamps `acceptedAt` once.
+    const next: Offer = { ...o, ...patch };
+    if (typeof patch.txAccept === 'string' && o.acceptedAt === null) next.acceptedAt = at;
     const ops: Array<[ChainOperation['kind'], string | null, string | null]> = [
       ['create', o.txCreate, next.txCreate],
       ['accept', o.txAccept, next.txAccept],

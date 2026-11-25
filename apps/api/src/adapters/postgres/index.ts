@@ -1,4 +1,4 @@
-import type { AttachmentKind, ChainStatus, InvoiceStatus, Role } from '@pronto/shared';
+import type { AttachmentKind, ChainStatus, InvoiceStatus, Profile, Role } from '@pronto/shared';
 import { DomainError } from '@pronto/shared';
 import { type Selectable, sql, type Updateable } from 'kysely';
 import type {
@@ -61,6 +61,7 @@ function toCompany(r: Selectable<Companies>): Company {
     wallet: r.wallet,
     code: r.code,
     fichaPublica: r.ficha_publica,
+    profile: r.profile as Profile,
     createdAt: r.created_at,
   };
 }
@@ -93,22 +94,29 @@ export class PgCompanyRepository implements CompanyRepository {
           wallet: company.wallet,
           code: company.code,
           ficha_publica: company.fichaPublica,
+          profile: company.profile,
           created_at: company.createdAt,
         })
         .execute(),
     );
   }
-  async update(id: string, patch: Partial<Pick<Company, 'fichaPublica'>>): Promise<Company> {
+  async update(
+    id: string,
+    patch: Partial<Pick<Company, 'fichaPublica' | 'profile'>>,
+  ): Promise<Company> {
     const notFound = () => new DomainError('COMPANY_NOT_FOUND');
     if (!isUuid(id)) throw notFound();
-    if (patch.fichaPublica === undefined) {
+    const set: Updateable<Companies> = {};
+    if (patch.fichaPublica !== undefined) set.ficha_publica = patch.fichaPublica;
+    if (patch.profile !== undefined) set.profile = patch.profile;
+    if (Object.keys(set).length === 0) {
       const c = await this.byId(id);
       if (c === null) throw notFound();
       return c;
     }
     const row = await this.db
       .updateTable('companies')
-      .set({ ficha_publica: patch.fichaPublica })
+      .set(set)
       .where('id', '=', id)
       .returningAll()
       .executeTakeFirst();
@@ -256,6 +264,7 @@ function toOffer(r: Selectable<Offers>): Offer {
     contractId: r.contract_id,
     lastCheckedAt: r.last_checked_at,
     createdAt: r.created_at,
+    acceptedAt: r.accepted_at,
   };
 }
 

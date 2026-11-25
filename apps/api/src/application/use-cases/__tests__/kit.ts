@@ -1,4 +1,4 @@
-import { DomainError } from '@pronto/shared';
+import { DomainError, type Profile } from '@pronto/shared';
 import { expect } from 'vitest';
 import { createMemoryAdapters, type MemoryAdapters } from '../../../adapters/memory';
 import type { ChainOffer } from '../../../domain/types';
@@ -33,7 +33,11 @@ export interface Kit {
   a: MemoryAdapters;
   uc: UseCases;
   /** Registers a company for a fresh wallet; returns its actor (token issued before registration). */
-  company(n: number, name?: string): Promise<{ actor: Actor; id: string; wallet: string }>;
+  company(
+    n: number,
+    name?: string,
+    profile?: Profile,
+  ): Promise<{ actor: Actor; id: string; wallet: string }>;
   readyAttachment(actor: Actor, kind?: 'pdf' | 'image' | 'xml'): Promise<string>;
   invoiceInput(buyerId: string, attachmentId: string, extra?: Record<string, unknown>): object;
   /** Supplier and buyer with a confirmed invoice for 1000. */
@@ -54,12 +58,13 @@ export function makeKit(): Kit {
   const kit: Kit = {
     a,
     uc,
-    async company(n, name = `Empresa ${n} SAC`) {
+    async company(n, name = `Empresa ${n} SAC`, profile = 'both') {
       const actor: Actor = { address: wallet(n), companyId: null };
       const c = await uc.registerCompany.execute(actor, {
         ruc: ruc(n),
         legalName: name,
         sector: 'Imprenta',
+        profile,
       });
       return { actor, id: c.id, wallet: c.wallet };
     },

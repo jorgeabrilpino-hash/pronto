@@ -90,7 +90,7 @@ async function login(t: TestApp, n: number): Promise<string> {
   return VerifyResponseSchema.parse(await res.json()).token;
 }
 
-async function company(t: TestApp, n: number) {
+async function company(t: TestApp, n: number, profile: 'supplier' | 'buyer' | 'both' = 'both') {
   const token = await login(t, n);
   const res = await post(
     t,
@@ -99,6 +99,7 @@ async function company(t: TestApp, n: number) {
       ruc: ruc(n),
       legalName: `Empresa ${n} SAC`,
       sector: 'Imprenta',
+      profile,
     },
     token,
   );
@@ -306,7 +307,12 @@ const PROTECTED: Array<[string, string]> = [
 ];
 
 const VALID_BODIES: Record<string, unknown> = {
-  'POST /v1/companies': { ruc: ruc(1), legalName: 'Empresa SAC', sector: 'Imprenta' },
+  'POST /v1/companies': {
+    ruc: ruc(1),
+    legalName: 'Empresa SAC',
+    sector: 'Imprenta',
+    profile: 'both',
+  },
   'PATCH /v1/me/settings': { fichaPublica: true },
   'POST /v1/attachments/upload-url': { kind: 'pdf', mime: 'application/pdf', sizeBytes: 10 },
   'POST /v1/invoices': invoiceBody(
@@ -383,21 +389,26 @@ describe('03-05, 14 companies', () => {
       await post(
         t,
         '/v1/companies',
-        { ruc: ruc(11), legalName: 'Otra SAC', sector: 'X1' },
+        { ruc: ruc(11), legalName: 'Otra SAC', sector: 'X1', profile: 'both' },
         a.token,
       ),
       'WALLET_TAKEN',
     );
     const other = await login(t, 12);
     await expectError(
-      await post(t, '/v1/companies', { ruc: ruc(10), legalName: 'Otra SAC', sector: 'X1' }, other),
+      await post(
+        t,
+        '/v1/companies',
+        { ruc: ruc(10), legalName: 'Otra SAC', sector: 'X1', profile: 'both' },
+        other,
+      ),
       'RUC_TAKEN',
     );
     await expectError(
       await post(
         t,
         '/v1/companies',
-        { ruc: '20000000000', legalName: 'Otra SAC', sector: 'X1' },
+        { ruc: '20000000000', legalName: 'Otra SAC', sector: 'X1', profile: 'both' },
         other,
       ),
       'RUC_INVALID',
@@ -412,6 +423,127 @@ describe('03-05, 14 companies', () => {
 });
 
 // ---- Attachments ---------------------------------------------------------------------------
+
+describe('company profile', () => {
+  it('registers with each profile and GET /v1/me returns it', async () => {
+    const t = fresh();
+    for (const [n, p] of [
+      [20, 'supplier'],
+      [21, 'buyer'],
+      [22, 'both'],
+    ] as const) {
+      const c = await company(t, n, p);
+      expect(c.profile).toBe(p);
+      const me = await get(t, '/v1/me', c.token);
+      expect(me.status).toBe(200);
+      expect(CompanySchema.parse(await me.json()).profile).toBe(p);
+    }
+  });
+
+  it('register without profile or with an unknown one is VALIDATION_ERROR', async () => {
+    const t = fresh();
+    const token = await login(t, 23);
+    const base = { ruc: ruc(23), legalName: 'Empresa SAC', sector: 'Imprenta' };
+    await expectError(await post(t, '/v1/companies', base, token), 'VALIDATION_ERROR');
+    await expectError(
+      await post(t, '/v1/companies', { ...base, profile: 'seller' }, token),
+      'VALIDATION_ERROR',
+    );
+  });
+
+  it('PATCH /v1/me/settings changes the profile and rejects an empty body', async () => {
+    const t = fresh();
+    const c = await company(t, 24, 'supplier');
+    const res = await patch(t, '/v1/me/settings', { profile: 'buyer' }, c.token);
+    expect(res.status).toBe(200);
+    const body = CompanySchema.parse(await res.json());
+    expect([body.profile, body.fichaPublica]).toEqual(['buyer', true]);
+    const me = CompanySchema.parse(await (await get(t, '/v1/me', c.token)).json());
+    expect(me.profile).toBe('buyer');
+    await expectError(await patch(t, '/v1/me/settings', {}, c.token), 'VALIDATION_ERROR');
+    await expectError(
+      await patch(t, '/v1/me/settings', { profile: 'seller' }, c.token),
+      'VALIDATION_ERROR',
+    );
+  });
+
+  it('actions outside the profile are FORBIDDEN; lists stay readable', async () => {
+    const t = fresh();
+    const supplier = await company(t, 25, 'supplier');
+    const buyer = await company(t, 26, 'buyer');
+    // A buyer-only company cannot send invoices.
+    const buyerAtt = await readyAttachment(t, buyer.token);
+    await expectError(
+      await post(t, '/v1/invoices', invoiceBody(supplier.id, buyerAtt), buyer.token),
+      'FORBIDDEN',
+    );
+    const att = await readyAttachment(t, supplier.token);
+    const sent = await post(t, '/v1/invoices', invoiceBody(buyer.id, att), supplier.token);
+    expect(sent.status).toBe(201);
+    const invoice = InvoiceSchema.parse(await sent.json());
+
+    // Supplier-only cannot confirm, reject or prepare offers; buyer-only cannot cancel or resend.
+    await patch(t, '/v1/me/settings', { profile: 'supplier' }, buyer.token);
+    await expectError(
+      await post(t, `/v1/invoices/${invoice.id}/confirm`, {}, buyer.token),
+      'FORBIDDEN',
+    );
+    await expectError(
+      await post(t, `/v1/invoices/${invoice.id}/reject`, { reason: 'No coincide' }, buyer.token),
+      'FORBIDDEN',
+    );
+    await patch(t, '/v1/me/settings', { profile: 'buyer' }, buyer.token);
+    const confirmed = await post(t, `/v1/invoices/${invoice.id}/confirm`, {}, buyer.token);
+    expect(confirmed.status).toBe(200);
+    await patch(t, '/v1/me/settings', { profile: 'supplier' }, buyer.token);
+    await expectError(
+      await post(
+        t,
+        `/v1/invoices/${invoice.id}/offers/draft`,
+        { discountBps: 100, validityDays: 3 },
+        buyer.token,
+      ),
+      'FORBIDDEN',
+    );
+    await patch(t, '/v1/me/settings', { profile: 'buyer' }, supplier.token);
+    await expectError(
+      await post(t, `/v1/invoices/${invoice.id}/cancel`, {}, supplier.token),
+      'FORBIDDEN',
+    );
+    await expectError(
+      await patch(t, `/v1/invoices/${invoice.id}`, { faceAmount: '10' }, supplier.token),
+      'FORBIDDEN',
+    );
+
+    const list = await get(t, '/v1/invoices?role=supplier', supplier.token);
+    expect(list.status).toBe(200);
+    expect((await list.json()) as unknown[]).toHaveLength(1);
+    const buyerList = await get(t, '/v1/invoices?role=buyer', buyer.token);
+    expect(buyerList.status).toBe(200);
+    expect((await buyerList.json()) as unknown[]).toHaveLength(1);
+  });
+
+  it('a reconcile as buyer needs buyer or both; offers carry their dates', async () => {
+    const t = fresh();
+    const { buyer, invoice } = await parties(t);
+    await post(t, `/v1/invoices/${invoice.id}/confirm`, {}, buyer.token);
+    const draftRes = await post(
+      t,
+      `/v1/invoices/${invoice.id}/offers/draft`,
+      { discountBps: 100, validityDays: 3 },
+      buyer.token,
+    );
+    expect(draftRes.status).toBe(201);
+    const draft = OfferDraftResponseSchema.parse(await draftRes.json());
+    expect(draft.acceptedAt).toBeNull();
+    expect(draft.createdAt).toBe(START.toISOString());
+    await patch(t, '/v1/me/settings', { profile: 'supplier' }, buyer.token);
+    await expectError(
+      await post(t, `/v1/offers/${draft.offerIdHex}/reconcile`, {}, buyer.token),
+      'FORBIDDEN',
+    );
+  });
+});
 
 describe('06 attachments', () => {
   it('upload url, complete and download url; others are FORBIDDEN', async () => {

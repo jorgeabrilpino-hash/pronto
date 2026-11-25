@@ -1,4 +1,4 @@
-import type { AttachmentKind, ChainStatus, InvoiceStatus } from '@pronto/shared';
+import type { AttachmentKind, ChainStatus, InvoiceStatus, Profile } from '@pronto/shared';
 
 /**
  * B0 creates only the type shapes the ports need. From B2 on, this folder belongs to the
@@ -16,6 +16,8 @@ export interface Company {
   wallet: string;
   code: string;
   fichaPublica: boolean;
+  /** Chosen at registration; gates which actions the company may take. */
+  profile: Profile;
   createdAt: Date;
 }
 
@@ -58,6 +60,8 @@ export interface Offer {
   lastCheckedAt: Date | null;
   /** When the draft was stored (B2): drives the 10 minute pending timeout. */
   createdAt: Date;
+  /** Stamped by the repository the first time a `txAccept` is recorded; never overwritten. */
+  acceptedAt: Date | null;
 }
 
 export interface Attachment {

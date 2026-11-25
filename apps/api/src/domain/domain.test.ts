@@ -251,6 +251,7 @@ function offer(partial: Partial<Offer>): Offer {
     contractId: 'C',
     lastCheckedAt: null,
     createdAt: NOW,
+    acceptedAt: null,
     ...partial,
   };
 }
