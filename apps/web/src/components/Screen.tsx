@@ -3,14 +3,17 @@ import { Link, useNavigate } from 'react-router';
 import { IconBack } from './icons';
 import { Logo } from './Logo';
 
-/** True inside the signed-in shell (sidebar or bottom nav provides the frame). */
+/** True when the bottom navigation is on screen (footers and padding leave room for it). */
 export const ShellContext = createContext(false);
+
+/** The app is one phone column, centered on wide screens. */
+export const COLUMN = 'mx-auto w-full max-w-[480px] bg-paper sm:border-x-2 sm:border-ink';
 
 export function TestnetChip() {
   return (
     <Link
       to="/red"
-      className="label inline-flex min-h-8 items-center border-2 border-ink bg-stellar px-2.5 text-ink"
+      className="inline-flex min-h-8 items-center rounded-full border-2 border-ink bg-stellar px-3 text-xs font-bold text-ink"
     >
       Testnet
     </Link>
@@ -37,12 +40,12 @@ export function TopBar({ title, back = true, right }: TopBarProps) {
             else if (typeof back === 'string') navigate(back);
             else navigate(-1);
           }}
-          className="hard flex size-11 shrink-0 items-center justify-center border-2 border-ink bg-card"
+          className="hard flex size-11 shrink-0 items-center justify-center rounded-card border-2 border-ink bg-card"
         >
           <IconBack />
         </button>
       ) : null}
-      <h1 className="display min-w-0 flex-1 text-[30px]">{title}</h1>
+      <h1 className="display min-w-0 flex-1 text-[22px]">{title}</h1>
       <div className="flex shrink-0 items-center gap-2">{right ?? <TestnetChip />}</div>
     </header>
   );
@@ -54,32 +57,26 @@ interface ScreenProps {
   right?: ReactNode;
   /** Fixed bottom area: the single primary action of the screen. */
   footer?: ReactNode;
-  /** Use the full content width (dashboards, tables). */
-  wide?: boolean;
   children: ReactNode;
 }
 
-/** Page frame. Inside the shell it only adds the header; alone it brings its own column. */
-export function Screen({ title, back = true, right, footer, wide = false, children }: ScreenProps) {
-  const inShell = useContext(ShellContext);
-  const width = wide ? 'max-w-[1080px]' : 'max-w-[720px]';
+export function Screen({ title, back = true, right, footer, children }: ScreenProps) {
+  const nav = useContext(ShellContext);
   return (
-    <div className={`mx-auto flex w-full flex-col ${width} ${inShell ? '' : 'min-h-dvh'}`}>
+    <div className={`${COLUMN} flex flex-col ${nav ? 'min-h-[calc(100dvh-6rem)]' : 'min-h-dvh'}`}>
       <TopBar title={title} back={back} right={right} />
-      <main className="flex flex-1 flex-col gap-5 px-4 pb-8 pt-2">{children}</main>
+      <main className="flex flex-1 flex-col gap-4 px-4 pb-6 pt-2">{children}</main>
       {footer ? <Footer>{footer}</Footer> : null}
     </div>
   );
 }
 
 export function Footer({ children }: { children: ReactNode }) {
-  const inShell = useContext(ShellContext);
+  const nav = useContext(ShellContext);
   return (
     <div
-      className={`sticky z-10 flex flex-col gap-1 border-t-2 border-ink bg-paper px-4 pb-3 pt-3 lg:bottom-0 lg:border-t-0 lg:pb-6 ${
-        inShell
-          ? 'bottom-[calc(64px+env(safe-area-inset-bottom))]'
-          : 'bottom-0 pb-[max(16px,env(safe-area-inset-bottom))]'
+      className={`sticky z-10 flex flex-col gap-3 bg-paper px-4 pt-3 ${
+        nav ? 'bottom-24 pb-3' : 'bottom-0 pb-[max(16px,env(safe-area-inset-bottom))]'
       }`}
     >
       {children}
@@ -88,25 +85,15 @@ export function Footer({ children }: { children: ReactNode }) {
 }
 
 /** Public screen without a title bar (welcome, onboarding). */
-export function Plain({
-  children,
-  footer,
-  inverted = false,
-}: {
-  children: ReactNode;
-  footer?: ReactNode;
-  inverted?: boolean;
-}) {
+export function Plain({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className={`min-h-dvh ${inverted ? 'bg-ink text-paper' : ''}`}>
-      <div className="mx-auto flex min-h-dvh w-full max-w-[520px] flex-col">
-        <div className="flex items-center justify-between px-4 pt-5">
-          <Logo inverted={inverted} />
-          <TestnetChip />
-        </div>
-        <main className="flex flex-1 flex-col gap-5 px-4 pb-6 pt-8">{children}</main>
-        {footer ? <Footer>{footer}</Footer> : null}
+    <div className={`${COLUMN} flex min-h-dvh flex-col`}>
+      <div className="flex items-center justify-between px-4 pt-5">
+        <Logo />
+        <TestnetChip />
       </div>
+      <main className="flex flex-1 flex-col gap-4 px-4 pb-6 pt-8">{children}</main>
+      {footer ? <Footer>{footer}</Footer> : null}
     </div>
   );
 }

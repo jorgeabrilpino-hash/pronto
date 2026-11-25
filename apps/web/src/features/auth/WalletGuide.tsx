@@ -30,19 +30,19 @@ export function WalletGuide() {
       </p>
       <ol className="flex flex-col gap-4">
         {STEPS.map((s) => (
-          <li key={s.n} className="flex gap-4 border-2 border-ink bg-card p-4 shadow-hard">
-            <span className="display flex size-12 shrink-0 items-center justify-center bg-ink text-[32px] text-paper">
+          <li key={s.n} className="flex gap-4 rounded-card border-2 border-ink bg-card p-4">
+            <span className="display flex size-10 rounded-card shrink-0 items-center justify-center bg-ink text-[20px] text-paper">
               {s.n}
             </span>
             <span className="flex flex-col gap-2">
-              <span className="display text-[28px]">{s.title}</span>
+              <span className="display text-[18px]">{s.title}</span>
               <span className="text-[15px]">{s.text}</span>
               {s.link ? (
                 <a
                   href={s.link.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="tabular text-sm underline decoration-2 underline-offset-4"
+                  className="code text-sm underline decoration-2 underline-offset-4"
                 >
                   {s.link.label}
                 </a>

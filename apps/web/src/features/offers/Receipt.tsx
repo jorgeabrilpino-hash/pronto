@@ -72,7 +72,7 @@ export function Receipt() {
                   <span className="font-mono text-[11px] font-medium uppercase tracking-[0.04em] text-muted">
                     Código de operación
                   </span>
-                  <span className="tabular break-all text-sm">{shortHash(tx)}</span>
+                  <span className="code break-all text-sm">{shortHash(tx)}</span>
                   <a
                     href={explorerUrl(tx)}
                     target="_blank"

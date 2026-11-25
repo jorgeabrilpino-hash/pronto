@@ -12,7 +12,7 @@ export function ReceiptCard({ body, stub, tone = 'light' }: Props) {
   const dark = tone === 'dark';
   return (
     <section
-      className={`relative border-2 border-ink shadow-hard ${
+      className={`relative rounded-card border-2 border-ink ${
         dark ? 'bg-ink text-paper' : 'bg-card text-ink'
       }`}
     >

@@ -1,9 +1,7 @@
 import type { Invoice, Role } from '@pronto/shared';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { useSession } from '@/api/session';
-import { LinkButton } from '@/components/Button';
 import { ErrorNotice } from '@/components/ErrorNotice';
-import { IconPlus } from '@/components/icons';
 import { Screen, TestnetChip } from '@/components/Screen';
 import { InvoiceRow } from '@/features/invoices/InvoiceRow';
 import { needsAction } from '@/features/invoices/status';
@@ -57,19 +55,11 @@ export function Home() {
       back={false}
       right={
         <div className="flex items-center gap-1.5">
-          <span className="tabular rounded-full border border-line bg-ivory px-2.5 py-1.5 text-xs text-muted">
+          <span className="code rounded-full border-2 border-ink bg-card px-2.5 py-1 text-xs text-muted">
             {shortWallet(session?.address ?? '')}
           </span>
           <TestnetChip />
         </div>
-      }
-      footer={
-        role === 'supplier' ? (
-          <LinkButton to="/facturas/nueva">
-            <IconPlus size={20} />
-            Nueva factura
-          </LinkButton>
-        ) : undefined
       }
     >
       <div role="tablist" aria-label="Facturas" className="flex gap-2">
@@ -131,22 +121,6 @@ export function Home() {
           )}
         </>
       ) : null}
-
-      <nav aria-label="Más" className="mt-2 flex justify-center gap-1">
-        {[
-          ['/mi-codigo', 'Mi código'],
-          ['/contactos', 'Contactos'],
-          ['/ajustes', 'Ajustes'],
-        ].map(([to, label]) => (
-          <Link
-            key={to}
-            to={to ?? '/'}
-            className="inline-flex min-h-11 items-center rounded-full px-4 text-[15px] font-medium text-muted active:text-ink"
-          >
-            {label}
-          </Link>
-        ))}
-      </nav>
     </Screen>
   );
 }

@@ -22,7 +22,7 @@ export function Chip({
 }) {
   return (
     <span
-      className={`label inline-flex items-center gap-1.5 whitespace-nowrap border-2 px-2 py-1 ${tones[tone]}`}
+      className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border-2 px-2.5 py-0.5 text-xs font-semibold ${tones[tone]}`}
     >
       {icon}
       {children}

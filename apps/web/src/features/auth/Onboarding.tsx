@@ -50,7 +50,7 @@ export function Onboarding() {
       }
     >
       <p className="label text-muted">{slide?.label}</p>
-      <h1 className="display text-[48px] sm:text-[60px]">{slide?.title}</h1>
+      <h1 className="display text-[28px]">{slide?.title}</h1>
       <p className="max-w-[44ch] text-lg">{slide?.text}</p>
       <div className="mt-2 flex gap-2" aria-hidden="true">
         {SLIDES.map((s, n) => (

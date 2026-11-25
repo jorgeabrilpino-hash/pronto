@@ -19,7 +19,7 @@ export function Field({ label, error, hint, suffix, mono, id, ...rest }: FieldPr
         {label}
       </label>
       <div
-        className={`flex h-[52px] items-center border-2 bg-card px-3 focus-within:shadow-[3px_3px_0_#ff5a1f] ${
+        className={`flex h-[52px] items-center rounded-card border-2 bg-card px-3 focus-within:shadow-[3px_3px_0_#ff5a1f] ${
           error ? 'border-danger' : 'border-ink'
         }`}
       >

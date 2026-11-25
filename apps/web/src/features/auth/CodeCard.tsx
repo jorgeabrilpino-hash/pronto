@@ -47,7 +47,7 @@ export function CodeCard({ company }: { company: Pick<Company, 'code' | 'legalNa
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.04em] text-muted">
             Código Pronto
           </p>
-          <p className="tabular text-[28px] font-semibold">{company.code}</p>
+          <p className="code text-[24px] font-semibold">{company.code}</p>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={copy}>
               <IconCopy size={18} />

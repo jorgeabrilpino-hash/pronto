@@ -62,9 +62,7 @@ export function Welcome() {
       }
     >
       <p className="label text-muted">Facturas pagadas antes de tiempo</p>
-      <h1 className="display text-[56px] sm:text-[72px]">
-        Cobra hoy lo que te pagan en 30&nbsp;días.
-      </h1>
+      <h1 className="display text-[30px]">Cobra hoy lo que te pagan en 30&nbsp;días.</h1>
       <p className="max-w-[44ch] text-lg">
         Si vendes, cobras antes con un descuento claro. Si compras, ahorras pagando antes. El pago
         se hace en una sola operación, en la red Stellar.
@@ -77,7 +75,7 @@ export function Welcome() {
               <span className="label text-paper/60">Pago total de F001-123</span>
               <Stamp tilt>Pagado</Stamp>
             </div>
-            <p className="display text-[64px]">985,00</p>
+            <p className="tabular text-[40px] font-bold">985,00</p>
             <p className="tabular text-sm text-paper/70">USDC · descuento 1,5 %</p>
           </>
         }

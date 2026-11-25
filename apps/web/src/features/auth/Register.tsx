@@ -70,7 +70,7 @@ export function Register() {
       title="Registro"
       back="/"
       right={
-        <span className="tabular rounded-full border border-line bg-ivory px-3 py-1.5 text-xs text-muted">
+        <span className="code rounded-full border-2 border-ink bg-card px-3 py-1 text-xs text-muted">
           {shortWallet(session.address)}
         </span>
       }

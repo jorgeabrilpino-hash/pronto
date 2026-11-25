@@ -9,9 +9,9 @@ const base =
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    'hard h-[52px] w-full border-2 border-ink bg-signal px-5 text-base text-ink uppercase tracking-wide',
+    'hard h-[52px] w-full rounded-card border-2 border-ink bg-signal px-5 text-base font-bold text-ink',
   secondary:
-    'hard min-h-11 border-2 border-ink bg-card px-5 text-[15px] text-ink active:bg-pressed',
+    'hard min-h-11 rounded-card border-2 border-ink bg-card px-5 text-[15px] text-ink active:bg-pressed',
   text: 'min-h-11 px-3 text-[15px] font-medium text-ink underline underline-offset-4 decoration-2',
   danger:
     'min-h-11 px-3 text-[15px] font-medium text-muted underline underline-offset-4 active:text-danger',

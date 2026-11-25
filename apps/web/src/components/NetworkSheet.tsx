@@ -41,7 +41,7 @@ export function NetworkSheet({ state, note, onRetry, onClose }: Props) {
 
   return (
     <Sheet open={state.open} title={state.kind ? TITLES[state.kind] : ''}>
-      {note ? <p className="tabular break-all text-sm text-muted">{note}</p> : null}
+      {note ? <p className="code break-all text-sm text-muted">{note}</p> : null}
       <ol className="flex flex-col gap-3">
         {STEPS.map((s, i) => {
           const done = i < idx;
@@ -76,7 +76,7 @@ export function NetworkSheet({ state, note, onRetry, onClose }: Props) {
           <span className="font-mono text-[11px] font-medium uppercase tracking-[0.04em] text-muted">
             Código de operación
           </span>
-          <span className="tabular break-all text-sm">{shortHash(state.txHash)}</span>
+          <span className="code break-all text-sm">{shortHash(state.txHash)}</span>
           <div className="flex gap-1">
             <button
               type="button"

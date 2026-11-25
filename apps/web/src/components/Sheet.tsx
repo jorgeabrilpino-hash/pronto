@@ -19,7 +19,7 @@ export function Sheet({ open, title, children, onClose }: SheetProps) {
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center lg:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
       {onClose ? (
         <button
           type="button"
@@ -35,10 +35,10 @@ export function Sheet({ open, title, children, onClose }: SheetProps) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative flex max-h-[92dvh] w-full max-w-[480px] flex-col gap-4 overflow-y-auto border-2 border-b-0 border-ink bg-paper px-4 pb-[max(20px,env(safe-area-inset-bottom))] pt-3 shadow-sheet [animation:sheet-in_180ms_ease-out] lg:border-b-2 lg:px-6 lg:pb-6 lg:shadow-hard"
+        className="relative flex max-h-[92dvh] w-full max-w-[480px] flex-col gap-4 overflow-y-auto border-2 border-b-0 border-ink bg-card px-4 rounded-t-[20px] pb-[max(20px,env(safe-area-inset-bottom))] pt-3 shadow-sheet [animation:sheet-in_180ms_ease-out]"
       >
-        <span className="mx-auto h-1.5 w-10 bg-ink lg:hidden" />
-        <h2 className="display text-[30px]">{title}</h2>
+        <span className="mx-auto h-1.5 w-10 rounded-full bg-ink" />
+        <h2 className="display text-[22px]">{title}</h2>
         {children}
       </div>
     </div>

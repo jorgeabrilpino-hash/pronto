@@ -2,13 +2,21 @@ import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { api } from '@/api/endpoints';
 import { sessionStore, useSession } from '@/api/session';
-import { Button } from '@/components/Button';
+import { Button, LinkButton } from '@/components/Button';
 import { ErrorNotice } from '@/components/ErrorNotice';
+import { IconChevron } from '@/components/icons';
 import { Screen } from '@/components/Screen';
 import { signOut } from '@/features/auth/signIn';
 import { shortWallet } from '@/lib/format';
 
-/** View 16: company data, public profile on/off, disconnect. */
+const LINKS: Array<[string, string]> = [
+  ['/mi-codigo', 'Mi código'],
+  ['/contactos', 'Contactos'],
+  ['/red', 'Pronto en la red'],
+  ['/como-funciona', 'Cómo funciona'],
+];
+
+/** Perfil: company data, public profile, links and sign out. */
 export function Settings() {
   const session = useSession();
   const navigate = useNavigate();
@@ -20,20 +28,7 @@ export function Settings() {
   if (!company || !session) return null;
 
   return (
-    <Screen
-      title="Ajustes"
-      footer={
-        <Button
-          variant="secondary"
-          onClick={async () => {
-            await signOut();
-            navigate('/', { replace: true });
-          }}
-        >
-          Desconectar
-        </Button>
-      }
-    >
+    <Screen title="Perfil" back={false}>
       <dl className="flex flex-col gap-3 rounded-card border border-line bg-ivory p-4 text-[15px]">
         {[
           ['Empresa', company.legalName],
@@ -62,6 +57,23 @@ export function Settings() {
         />
       </label>
       {toggle.isError ? <ErrorNotice error={toggle.error} /> : null}
+      <nav aria-label="Tu cuenta" className="flex flex-col gap-3">
+        {LINKS.map(([to, label]) => (
+          <LinkButton key={to} to={to} variant="secondary" className="justify-between">
+            {label}
+            <IconChevron size={18} />
+          </LinkButton>
+        ))}
+      </nav>
+      <Button
+        variant="secondary"
+        onClick={async () => {
+          await signOut();
+          navigate('/', { replace: true });
+        }}
+      >
+        Cerrar sesión
+      </Button>
     </Screen>
   );
 }

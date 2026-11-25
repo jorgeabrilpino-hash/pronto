@@ -1,4 +1,4 @@
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
 import { Onboarding } from '@/features/auth/Onboarding';
 import { Register } from '@/features/auth/Register';
 import { RequireAuth } from '@/features/auth/RequireAuth';
@@ -30,8 +30,9 @@ export const routeTable: RouteObject[] = [
     children: [
       { path: '/fondos', element: <Funds /> },
       { path: '/app', element: <Home /> },
-      { path: '/facturas', element: <Placeholder title="Facturas" /> },
-      { path: '/calendario', element: <Placeholder title="Calendario" /> },
+      { path: '/facturas', element: <Placeholder title="Facturas" root /> },
+      { path: '/actividad', element: <Placeholder title="Actividad" root /> },
+      { path: '/perfil', element: <Settings /> },
       { path: '/como-funciona', element: <Placeholder title="Cómo funciona" /> },
       { path: '/facturas/nueva', element: <NewInvoice /> },
       { path: '/cobrar/:id', element: <ReceivableDetail /> },
@@ -40,7 +41,7 @@ export const routeTable: RouteObject[] = [
       { path: '/comprobante/:offerId', element: <Receipt /> },
       { path: '/mi-codigo', element: <MyCode /> },
       { path: '/contactos', element: <Contacts /> },
-      { path: '/ajustes', element: <Settings /> },
+      { path: '/ajustes', element: <Navigate to="/perfil" replace /> },
     ],
   },
   { path: '*', element: <Placeholder title="No encontrada" /> },

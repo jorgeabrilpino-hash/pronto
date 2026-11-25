@@ -14,7 +14,7 @@ export function Logo({ inverted = false, size = 32 }: { inverted?: boolean; size
         />
       </svg>
       <span
-        className={`display text-[28px] ${inverted ? 'text-paper' : 'text-ink'}`}
+        className={`display text-[22px] ${inverted ? 'text-paper' : 'text-ink'}`}
         aria-hidden="true"
       >
         Pronto

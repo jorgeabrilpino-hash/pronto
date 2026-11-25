@@ -1,34 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --color-paper: #f2eee3;
+  --color-paper: #f4f4f2;
+  --color-desk: #e4e4e0;
+  --color-card: #ffffff;
   --color-ink: #0e0e0c;
   --color-signal: #ff5a1f;
   --color-green: #1e7a4c;
   --color-stellar: #fdda24;
-  --color-muted: #6b665b;
-  --color-card: #f8f5ec;
+  --color-muted: #5f5f5a;
   --color-danger: #b3261e;
-  /* Legacy names kept so older screens inherit the new look until they are rebuilt. */
-  --color-ivory: #f8f5ec;
+  /* Legacy names kept so older screens inherit the look until they are rebuilt. */
+  --color-ivory: #ffffff;
   --color-line: #0e0e0c;
   --color-gold: #ff5a1f;
   --color-green-tint: #1e7a4c1a;
-  --color-danger-tint: #f8f5ec;
-  --color-pressed: #e8e3d5;
-  --font-sans: "DM Sans Variable", system-ui, sans-serif;
+  --color-danger-tint: #ffffff;
+  --color-pressed: #ececea;
+  --font-sans: "Inter Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "Cascadia Mono", monospace;
-  --font-serif: "Instrument Serif", "Times New Roman", serif;
-  --radius-card: 2px;
-  --radius-field: 2px;
-  --shadow-hard: 4px 4px 0 #0e0e0c;
-  --shadow-sheet: 0 -4px 0 #0e0e0c;
+  --radius-card: 10px;
+  --radius-field: 10px;
+  --shadow-hard: 3px 3px 0 #0e0e0c;
+  --shadow-sheet: 0 -3px 0 #0e0e0c;
 }
 
 html {
-  background: var(--color-paper);
+  background: var(--color-desk);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
   -webkit-text-size-adjust: 100%;
 }
 
@@ -53,37 +54,37 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Money and figures: Inter with tabular numbers. */
 .tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mono only for codes, hashes and addresses. */
+.code {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* Mono uppercase label (EXPLORAR, CÓDIGO DE OPERACIÓN). */
+/* Small uppercase label. */
 .label {
-  font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-/* Display serif for titles and big amounts. */
+/* Screen titles and big figures: bold, tight Inter (no display serif). */
 .display {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
 }
 
-/* Diagonal hatch: pending, projected or empty. */
-.hatch {
-  background-image: repeating-linear-gradient(45deg, var(--color-ink) 0 2px, transparent 2px 7px);
-}
-
+/* Diagonal hatch: pending only. */
 .hatch-light {
   background-image: repeating-linear-gradient(
     45deg,
-    rgb(14 14 12 / 0.28) 0 2px,
+    rgb(14 14 12 / 0.25) 0 2px,
     transparent 2px 7px
   );
 }
@@ -97,7 +98,7 @@ a {
 }
 
 .hard:active {
-  transform: translate(3px, 3px);
+  transform: translate(2px, 2px);
   box-shadow: 1px 1px 0 var(--color-ink);
 }
 
@@ -141,7 +142,6 @@ a {
 @media print {
   header,
   nav,
-  aside,
   .sticky.bottom-0 {
     display: none !important;
   }

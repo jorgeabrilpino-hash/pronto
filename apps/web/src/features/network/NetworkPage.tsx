@@ -41,7 +41,7 @@ export function NetworkPage() {
             </span>
             <span className="flex flex-col">
               <span className="font-semibold">
-                {s.title} <span className="tabular text-sm font-normal text-muted">{s.fn}</span>
+                {s.title} <span className="code text-sm font-normal text-muted">{s.fn}</span>
               </span>
               <span className="text-[15px] text-muted">{s.text}</span>
             </span>
@@ -56,7 +56,7 @@ export function NetworkPage() {
           href={`https://stellar.expert/explorer/testnet/contract/${contract}`}
           target="_blank"
           rel="noreferrer"
-          className="tabular inline-flex min-h-11 items-center gap-2 break-all text-sm underline underline-offset-4"
+          className="code inline-flex min-h-11 items-center gap-2 break-all text-sm underline underline-offset-4"
         >
           {shortHash(contract)}
           <IconExternal size={16} />
@@ -83,7 +83,7 @@ export function NetworkPage() {
                   href={explorerUrl(o.txHash)}
                   target="_blank"
                   rel="noreferrer"
-                  className="tabular text-muted underline underline-offset-4"
+                  className="code text-muted underline underline-offset-4"
                 >
                   {shortHash(o.txHash)} · {formatDate(o.at)}
                 </a>
