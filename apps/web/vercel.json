@@ -16,7 +16,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://stellar.creit.tech; font-src 'self'; connect-src 'self' https://soroban-testnet.stellar.org https://horizon-testnet.stellar.org https://*.vercel.app https://*.walletconnect.com wss://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.org https://*.supabase.co; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://stellar.creit.tech; font-src 'self'; connect-src 'self' https://soroban-testnet.stellar.org https://horizon-testnet.stellar.org https://*.walletconnect.com wss://*.walletconnect.com https://*.walletconnect.org wss://*.walletconnect.org https://friendbot.stellar.org https://iasvqinlafmpqjkwckup.supabase.co; frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
         },
         {
           "key": "X-Content-Type-Options",

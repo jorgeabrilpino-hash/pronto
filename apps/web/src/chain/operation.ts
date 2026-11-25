@@ -79,6 +79,7 @@ export async function runOperation(
 ): Promise<string> {
   onStep('prepare');
   if (env.useMocks) return runMock(p, onStep);
+  if (!env.contractId) throw new ChainError('failed');
 
   const server = new rpc.Server(env.rpcUrl);
   const account = await server.getAccount(p.address);

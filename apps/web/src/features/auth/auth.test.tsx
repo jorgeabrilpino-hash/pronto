@@ -10,12 +10,15 @@ import { routeTable } from '@/routes/router';
 import { selectMockAccount } from '@/wallet/mock';
 
 vi.mock('@/chain/challenge', () => ({ assertChallenge: () => undefined }));
-vi.mock('@/wallet', async () => ({ wallet: (await import('@/wallet/mock')).mockWallet }));
+vi.mock('@/wallet', async () => ({
+  wallet: (await import('@/wallet/mock')).mockWallet,
+  walletKind: () => 'kit',
+  setWalletKind: () => undefined,
+}));
 
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 beforeEach(() => resetMockApi());
 afterEach(() => {
-  localStorage.clear();
   sessionStore.set(null);
   server.resetHandlers();
 });
@@ -34,17 +37,19 @@ function renderAt(path: string) {
 }
 
 describe('sign in and registration', () => {
-  it('a registered wallet goes straight to the app', async () => {
+  it('a registered wallet goes straight to the app, with no role choice', async () => {
     selectMockAccount(SUPPLIER_ADDRESS);
     const router = renderAt('/');
-    await userEvent.click(screen.getByRole('button', { name: 'Conectar mi billetera' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/bienvenida'));
+    await userEvent.click(screen.getByRole('link', { name: 'Entrar' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Conectar mi billetera' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
   });
 
   it('a new wallet registers, sees its code and QR, then continues to funds', async () => {
     selectMockAccount(NEW_ADDRESS);
     const router = renderAt('/');
-    await userEvent.click(screen.getByRole('button', { name: 'Conectar mi billetera' }));
+    await userEvent.click(screen.getByRole('link', { name: 'Entrar' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Conectar mi billetera' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/registro'));
 
     await userEvent.type(await screen.findByLabelText('RUC'), '20601234560');
@@ -60,9 +65,14 @@ describe('sign in and registration', () => {
     expect(await screen.findByText(/^PR-[2-9A-Z]{6}$/)).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /^QR de PR-/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/bienvenida'));
-    await userEvent.click(await screen.findByRole('button', { name: 'Saltar' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/fondos'));
+  });
+
+  it('the welcome offers Entrar and Cómo funciona, never a role', () => {
+    renderAt('/');
+    expect(screen.getByRole('link', { name: 'Entrar' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Cómo funciona' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Proveedor|Comprador|Empresa nueva/ })).toBeNull();
   });
 
   it('protected routes send an anonymous visitor to the start', async () => {

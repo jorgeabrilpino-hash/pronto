@@ -39,6 +39,9 @@ export function userMessage(error: unknown): { message: string; action: string }
   if (error instanceof Error && error.name === 'ChainError') {
     return CHAIN_MESSAGES[(error as Error & { kind: 'failed' | 'timeout' }).kind];
   }
+  if (error instanceof Error && error.name === 'PinError') {
+    return { message: 'PIN incorrecto', action: 'Reintentar' };
+  }
   if (error instanceof WalletError) return WALLET_MESSAGES[error.kind];
   return messageFor('INTERNAL');
 }

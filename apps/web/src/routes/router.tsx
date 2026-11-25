@@ -1,8 +1,8 @@
 import { createBrowserRouter, Navigate, type RouteObject } from 'react-router';
-import { Onboarding } from '@/features/auth/Onboarding';
+import { Connect } from '@/features/auth/Connect';
 import { Register } from '@/features/auth/Register';
 import { RequireAuth } from '@/features/auth/RequireAuth';
-import { WalletGuide } from '@/features/auth/WalletGuide';
+import { TestAccount } from '@/features/auth/TestAccount';
 import { Welcome } from '@/features/auth/Welcome';
 import { MyCode } from '@/features/code/MyCode';
 import { CompanyPage } from '@/features/company/CompanyPage';
@@ -10,6 +10,7 @@ import { Contacts } from '@/features/company/Contacts';
 import { Settings } from '@/features/company/Settings';
 import { Funds } from '@/features/funds/Funds';
 import { Home } from '@/features/home/Home';
+import { HowItWorks } from '@/features/info/HowItWorks';
 import { NewInvoice } from '@/features/invoices/new/NewInvoice';
 import { PayableDetail } from '@/features/invoices/PayableDetail';
 import { ReceivableDetail } from '@/features/invoices/ReceivableDetail';
@@ -21,8 +22,9 @@ import { Placeholder } from './Placeholder';
 export const routeTable: RouteObject[] = [
   { path: '/', element: <Welcome /> },
   { path: '/registro', element: <Register /> },
-  { path: '/billetera', element: <WalletGuide /> },
-  { path: '/bienvenida', element: <Onboarding /> },
+  { path: '/entrar', element: <Connect /> },
+  { path: '/cuenta-prueba', element: <TestAccount /> },
+  { path: '/como-funciona', element: <HowItWorks /> },
   { path: '/e/:code', element: <CompanyPage /> },
   { path: '/red', element: <NetworkPage /> },
   {
@@ -33,7 +35,6 @@ export const routeTable: RouteObject[] = [
       { path: '/facturas', element: <Placeholder title="Facturas" root /> },
       { path: '/actividad', element: <Placeholder title="Actividad" root /> },
       { path: '/perfil', element: <Settings /> },
-      { path: '/como-funciona', element: <Placeholder title="Cómo funciona" /> },
       { path: '/facturas/nueva', element: <NewInvoice /> },
       { path: '/cobrar/:id', element: <ReceivableDetail /> },
       { path: '/pagar/:id', element: <PayableDetail /> },

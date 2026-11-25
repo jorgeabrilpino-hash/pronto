@@ -1,5 +1,11 @@
-import type { Company } from '@pronto/shared';
+import {
+  type Company,
+  CompanySchema,
+  IsoDateTimeSchema,
+  StellarAddressSchema,
+} from '@pronto/shared';
 import { useSyncExternalStore } from 'react';
+import { z } from 'zod';
 
 /**
  * The session survives a reload or an app switch: it is kept in sessionStorage until
@@ -16,16 +22,24 @@ export interface Session {
 
 const KEY = 'pronto.session';
 
+/** Stored data is untrusted input: anything that does not match is discarded. */
+const StoredSessionSchema = z.object({
+  address: StellarAddressSchema,
+  token: z.string().min(1),
+  expiresAt: IsoDateTimeSchema,
+  company: CompanySchema.nullable(),
+});
+
 function load(): Session | null {
   try {
     const raw = sessionStorage.getItem(KEY);
     if (!raw) return null;
-    const s = JSON.parse(raw) as Session;
-    if (!s.token || Date.parse(s.expiresAt) <= Date.now()) {
+    const parsed = StoredSessionSchema.safeParse(JSON.parse(raw));
+    if (!parsed.success || Date.parse(parsed.data.expiresAt) <= Date.now()) {
       sessionStorage.removeItem(KEY);
       return null;
     }
-    return s;
+    return parsed.data;
   } catch {
     return null;
   }

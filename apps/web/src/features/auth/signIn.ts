@@ -26,37 +26,7 @@ export async function signOut(): Promise<void> {
   await wallet.disconnect();
 }
 
-// ---- Onboarding and demo flags ---------------------------------------------------
-
-const ONBOARDED = 'pronto.onboarded';
-const DEMO = 'pronto.demo';
-
-function safe<T>(fn: () => T, fallback: T): T {
-  try {
-    return fn();
-  } catch {
-    return fallback;
-  }
-}
-
-export const isOnboarded = () => safe(() => localStorage.getItem(ONBOARDED) === '1', false);
-export const markOnboarded = () => safe(() => localStorage.setItem(ONBOARDED, '1'), undefined);
-export const isDemo = () => safe(() => sessionStorage.getItem(DEMO) === '1', false);
-
-/** The demo is a separate mode: mock API and mock wallet, loaded fresh. */
-export function enterDemo(): void {
-  safe(() => sessionStorage.setItem(DEMO, '1'), undefined);
-  window.location.assign('/');
-}
-
-export function exitDemo(): void {
-  safe(() => sessionStorage.removeItem(DEMO), undefined);
-  sessionStore.set(null);
-  window.location.assign('/');
-}
-
-/** Where a signed-in visitor goes next. */
+/** Where a signed-in visitor goes next: registration only for new wallets. */
 export function nextRoute(session: Session): string {
-  if (!session.company) return '/registro';
-  return isOnboarded() ? '/app' : '/bienvenida';
+  return session.company ? '/app' : '/registro';
 }
