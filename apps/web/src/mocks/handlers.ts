@@ -121,7 +121,7 @@ export const handlers = [
   ),
   route('get', '/me', CompanySchema, (c) => db.requireCompany(c.address)),
   route('patch', '/me/settings', CompanySchema, async (c) =>
-    db.updateSettings(c.address, UpdateSettingsRequestSchema.parse(await c.body()).fichaPublica),
+    db.updateSettings(c.address, UpdateSettingsRequestSchema.parse(await c.body())),
   ),
   route('get', '/companies/lookup', PublicCompanySchema, (c) => {
     const q = LookupQuerySchema.parse({

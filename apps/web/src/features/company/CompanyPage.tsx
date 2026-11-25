@@ -6,6 +6,7 @@ import { LinkButton } from '@/components/Button';
 import { ErrorNotice } from '@/components/ErrorNotice';
 import { ReceiptCard } from '@/components/ReceiptCard';
 import { Screen } from '@/components/Screen';
+import { canSupply, profileOf } from '@/features/shell/centralAction';
 
 /** View 13: public destination of the QR. Name, RUC, sector and Enviar factura. */
 export function CompanyPage() {
@@ -23,7 +24,7 @@ export function CompanyPage() {
       title="Empresa"
       back={session ? true : '/'}
       footer={
-        c && session?.company && !mine ? (
+        c && session?.company && !mine && canSupply(profileOf(session.company)) ? (
           <LinkButton to={`/facturas/nueva?code=${c.code}`}>Enviar factura</LinkButton>
         ) : c && !session ? (
           <LinkButton to="/">Entrar para enviar factura</LinkButton>

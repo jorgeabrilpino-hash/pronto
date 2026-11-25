@@ -54,6 +54,7 @@ describe('sign in and registration', () => {
     await userEvent.type(screen.getByLabelText('RUC'), '20100070970');
     await userEvent.type(screen.getByLabelText('Razón social'), 'Taller Norte SAC');
     await userEvent.type(screen.getByLabelText('Rubro'), 'Metalmecánica');
+    await userEvent.click(screen.getByRole('radio', { name: /Vendo a crédito/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Registrar empresa' }));
 
     expect(await screen.findByText(/^PR-[2-9A-Z]{6}$/)).toBeInTheDocument();

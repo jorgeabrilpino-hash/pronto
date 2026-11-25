@@ -11,6 +11,7 @@ import { Field } from '@/components/Field';
 import { NetworkSheet } from '@/components/NetworkSheet';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
+import { canBuy, profileOf } from '@/features/shell/centralAction';
 import { InvoiceCard } from './InvoiceCard';
 import { useInvoice } from './useInvoices';
 
@@ -75,8 +76,11 @@ export function PayableDetail() {
     });
   }
 
+  const allowed = canBuy(profileOf(session?.company));
   let footer = null;
-  if (inv?.displayStatus === 'sent') {
+  if (!allowed && inv?.displayStatus !== 'collected') {
+    footer = null;
+  } else if (inv?.displayStatus === 'sent') {
     footer = (
       <>
         <Button

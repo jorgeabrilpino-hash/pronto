@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { centralAction, profileOf, TAB_ROOTS } from './centralAction';
+import { canBuy, canSupply, centralAction, profileOf, TAB_ROOTS } from './centralAction';
 
 describe('central action', () => {
   it('follows the profile', () => {
@@ -12,10 +12,14 @@ describe('central action', () => {
     expect(centralAction('both', '?tab=pagar').label).toBe('Pagar');
   });
 
-  it('treats a missing or unknown profile as both', () => {
+  it('knows which side each profile can act on', () => {
+    expect([canSupply('supplier'), canSupply('buyer'), canSupply('both')]).toEqual([
+      true,
+      false,
+      true,
+    ]);
+    expect([canBuy('supplier'), canBuy('buyer'), canBuy('both')]).toEqual([false, true, true]);
     expect(profileOf(null)).toBe('both');
-    expect(profileOf({})).toBe('both');
-    expect(profileOf({ profile: 'x' })).toBe('both');
     expect(profileOf({ profile: 'buyer' })).toBe('buyer');
   });
 

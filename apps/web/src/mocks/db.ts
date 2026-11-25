@@ -5,6 +5,7 @@ import {
   type Invoice,
   type InvoiceStatus,
   type Offer,
+  type Profile,
   type PublicCompany,
   type Role,
 } from '@pronto/shared';
@@ -62,6 +63,8 @@ interface OfferRow {
   txCreate: string | null;
   txAccept: string | null;
   txReclaim: string | null;
+  createdAt: string;
+  acceptedAt: string | null;
 }
 
 /** What the "network" holds for an offer. The mock chain writes here; reconcile reads it. */
@@ -142,6 +145,7 @@ function seed(): void {
     ruc: rucFrom('2060123456'),
     sector: 'Imprenta y gráfica',
     wallet: SUPPLIER_ADDRESS,
+    profile: 'both',
     fichaPublica: true,
     createdAt: iso(addDays(now, -40)),
   };
@@ -152,6 +156,7 @@ function seed(): void {
     ruc: rucFrom('2051234567'),
     sector: 'Distribución mayorista',
     wallet: BUYER_ADDRESS,
+    profile: 'both',
     fichaPublica: true,
     createdAt: iso(addDays(now, -35)),
   };
@@ -220,6 +225,8 @@ function seed(): void {
       txCreate: hex(32),
       txAccept: chainStatus === 'accepted' ? hex(32) : null,
       txReclaim: chainStatus === 'reclaimed' ? hex(32) : null,
+      createdAt: iso(addDays(now, -2)),
+      acceptedAt: chainStatus === 'accepted' ? iso(addDays(now, -1)) : null,
     };
     state.offers.push(row);
     const chainState =
@@ -267,6 +274,13 @@ export function requireCompany(address: string | null): CompanyRow {
   const c = companyByWallet(address);
   if (!c) throw new DomainError('FORBIDDEN');
   return c;
+}
+
+/** Server gate by company profile (supplier actions vs buyer actions). */
+function gate(me: CompanyRow, required: 'supplier' | 'buyer'): void {
+  if (me.profile !== 'both' && me.profile !== required) {
+    throw new DomainError('FORBIDDEN', undefined, { profile: me.profile, required });
+  }
 }
 
 function offerFor(invoiceId: string): OfferRow | null {
@@ -365,7 +379,7 @@ export function verifyChallenge(address: string, signedXdr: string) {
 
 export function registerCompany(
   address: string | null,
-  input: { ruc: string; legalName: string; sector: string },
+  input: { ruc: string; legalName: string; sector: string; profile: Profile },
 ): Company {
   if (!address) throw new DomainError('UNAUTHENTICATED');
   if (!isValidRuc(input.ruc)) throw new DomainError('RUC_INVALID');
@@ -378,6 +392,7 @@ export function registerCompany(
     ruc: input.ruc,
     sector: input.sector,
     wallet: address,
+    profile: input.profile,
     fichaPublica: true,
     createdAt: iso(clock.now()),
   };
@@ -385,9 +400,13 @@ export function registerCompany(
   return row;
 }
 
-export function updateSettings(address: string | null, fichaPublica: boolean): Company {
+export function updateSettings(
+  address: string | null,
+  patch: { fichaPublica?: boolean | undefined; profile?: Profile | undefined },
+): Company {
   const me = requireCompany(address);
-  me.fichaPublica = fichaPublica;
+  if (patch.fichaPublica !== undefined) me.fichaPublica = patch.fichaPublica;
+  if (patch.profile !== undefined) me.profile = patch.profile;
   return me;
 }
 
@@ -472,6 +491,7 @@ export interface SendInvoiceInput {
 
 export function sendInvoice(address: string | null, input: SendInvoiceInput): Invoice {
   const me = requireCompany(address);
+  gate(me, 'supplier');
   if (input.buyerCompanyId === me.id) throw new DomainError('SELF_INVOICE');
   companyById(input.buyerCompanyId);
   const today = isoDate(clock.now());
@@ -549,6 +569,7 @@ export function transition(
   const { row, role } = loadInvoiceFor(me, id);
   const need = (r: Role) => {
     if (role !== r) throw new DomainError('FORBIDDEN');
+    gate(me, r);
   };
   if (action === 'confirm' || action === 'reject') {
     need('buyer');
@@ -581,6 +602,7 @@ export function draftOffer(
   const me = requireCompany(address);
   const { row, role } = loadInvoiceFor(me, invoiceId);
   if (role !== 'buyer') throw new DomainError('FORBIDDEN');
+  gate(me, 'buyer');
   if (row.status !== 'confirmed') throw new DomainError('INVALID_STATE');
   if (hasActiveOffer(row.id)) throw new DomainError('OFFER_EXISTS');
   const now = clock.now();
@@ -602,6 +624,8 @@ export function draftOffer(
     txCreate: null,
     txAccept: null,
     txReclaim: null,
+    createdAt: iso(now),
+    acceptedAt: null,
   };
   state.offers = state.offers.filter(
     (o) => !(o.invoiceId === row.id && o.chainStatus === 'pending'),
@@ -627,13 +651,17 @@ function offerForParty(me: CompanyRow, offerIdHex: string): { offer: OfferRow; i
 
 export function reconcileOffer(address: string | null, offerIdHex: string): Offer {
   const me = requireCompany(address);
-  const { offer } = offerForParty(me, offerIdHex);
+  const { offer, inv } = offerForParty(me, offerIdHex);
+  if (inv.buyerId === me.id) gate(me, 'buyer');
   const onChain = state.chain.get(offerIdHex);
   if (onChain) {
     offer.chainStatus =
       onChain.state === 'Open' ? 'open' : onChain.state === 'Accepted' ? 'accepted' : 'reclaimed';
     offer.txCreate = onChain.txCreate ?? offer.txCreate;
     offer.txAccept = onChain.txAccept ?? offer.txAccept;
+    if (offer.chainStatus === 'accepted' && offer.txAccept) {
+      offer.acceptedAt ??= iso(clock.now());
+    }
     offer.txReclaim = onChain.txReclaim ?? offer.txReclaim;
   }
   return offerDto(offer);

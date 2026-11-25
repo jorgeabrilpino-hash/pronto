@@ -11,6 +11,7 @@ import { Field } from '@/components/Field';
 import { NetworkSheet } from '@/components/NetworkSheet';
 import { Screen } from '@/components/Screen';
 import { Sheet } from '@/components/Sheet';
+import { canSupply, profileOf } from '@/features/shell/centralAction';
 import { formatUsdc } from '@/lib/money';
 import { InvoiceCard } from './InvoiceCard';
 import { normalizeAmount } from './new/StepData';
@@ -96,6 +97,7 @@ export function ReceivableDetail() {
     });
   }
 
+  const supplies = canSupply(profileOf(session?.company));
   let footer = null;
   if (inv?.displayStatus === 'offer_open' && offer) {
     footer = (
@@ -106,13 +108,13 @@ export function ReceivableDetail() {
         </Button>
       </>
     );
-  } else if (inv?.displayStatus === 'rejected') {
+  } else if (inv?.displayStatus === 'rejected' && supplies) {
     footer = <Button onClick={() => setEditing(true)}>Corregir y reenviar</Button>;
   } else if (inv?.displayStatus === 'collected' && offer) {
     footer = <LinkButton to={`/comprobante/${offer.offerIdHex}`}>Ver comprobante</LinkButton>;
   }
   const canCancel =
-    inv?.displayStatus === 'sent' ||
+    (supplies && inv?.displayStatus === 'sent') ||
     inv?.displayStatus === 'confirmed' ||
     inv?.displayStatus === 'rejected';
 

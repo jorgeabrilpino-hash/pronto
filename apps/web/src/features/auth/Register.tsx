@@ -1,3 +1,4 @@
+import type { Profile } from '@pronto/shared';
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import { api } from '@/api/endpoints';
@@ -11,6 +12,7 @@ import { shortWallet } from '@/lib/format';
 import { messageFor } from '@/lib/messages';
 import { isValidRuc } from '@/lib/ruc';
 import { CodeCard } from './CodeCard';
+import { ProfileCards } from './ProfileCards';
 
 /** View 2: RUC, legal name and sector; then the code and QR (2b). */
 export function Register() {
@@ -19,6 +21,7 @@ export function Register() {
   const [ruc, setRuc] = useState('');
   const [legalName, setLegalName] = useState('');
   const [sector, setSector] = useState('');
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -44,11 +47,12 @@ export function Register() {
   const rucInvalid = !isValidRuc(ruc);
   const rucError =
     (ruc.length === 11 || touched) && rucInvalid ? messageFor('RUC_INVALID').message : undefined;
-  const ready = !rucInvalid && legalName.trim().length >= 2 && sector.trim().length >= 2;
+  const ready =
+    !rucInvalid && legalName.trim().length >= 2 && sector.trim().length >= 2 && profile !== null;
 
   async function submit() {
     setTouched(true);
-    if (!ready) return;
+    if (!ready || !profile) return;
     setBusy(true);
     setError(null);
     try {
@@ -56,6 +60,7 @@ export function Register() {
         ruc,
         legalName: legalName.trim(),
         sector: sector.trim(),
+        profile,
       });
       sessionStore.setCompany(created);
     } catch (e) {
@@ -89,6 +94,7 @@ export function Register() {
         value={ruc}
         onChange={(e) => setRuc(e.target.value.replace(/\D/g, ''))}
         error={rucError}
+        hint="Los 11 dígitos de tu RUC."
       />
       <Field
         label="Razón social"
@@ -104,6 +110,11 @@ export function Register() {
         value={sector}
         onChange={(e) => setSector(e.target.value)}
         error={touched && sector.trim().length < 2 ? 'Escribe tu rubro' : undefined}
+      />
+      <ProfileCards
+        value={profile}
+        onChange={setProfile}
+        error={touched && !profile ? 'Elige una opción' : undefined}
       />
       {error ? (
         <ErrorNotice

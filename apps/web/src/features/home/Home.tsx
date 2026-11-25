@@ -6,6 +6,7 @@ import { Screen, TestnetChip } from '@/components/Screen';
 import { InvoiceRow } from '@/features/invoices/InvoiceRow';
 import { needsAction } from '@/features/invoices/status';
 import { useInvoices } from '@/features/invoices/useInvoices';
+import { profileOf } from '@/features/shell/centralAction';
 import { shortWallet } from '@/lib/format';
 import { formatUsdc, parseMoney } from '@/lib/money';
 
@@ -35,7 +36,9 @@ function Skeleton() {
 export function Home() {
   const session = useSession();
   const [params, setParams] = useSearchParams();
-  const role: Role = params.get('tab') === 'pagar' ? 'buyer' : 'supplier';
+  const profile = profileOf(session?.company);
+  const asked: Role = params.get('tab') === 'pagar' ? 'buyer' : 'supplier';
+  const role: Role = profile === 'both' ? asked : profile;
   const supplier = useInvoices('supplier');
   const buyer = useInvoices('buyer');
   const current = role === 'supplier' ? supplier : buyer;
@@ -62,7 +65,11 @@ export function Home() {
         </div>
       }
     >
-      <div role="tablist" aria-label="Facturas" className="flex gap-2">
+      <div
+        role="tablist"
+        aria-label="Facturas"
+        className={profile === 'both' ? 'flex gap-2' : 'hidden'}
+      >
         {TABS.map((t) => (
           <button
             key={t.slug}

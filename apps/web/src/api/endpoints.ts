@@ -17,6 +17,7 @@ import {
   type RegisterCompanyRequestSchema,
   type ResendInvoiceRequest,
   type Role,
+  type UpdateSettingsRequestSchema,
   type UploadUrlRequestSchema,
   UploadUrlResponseSchema,
   VerifyResponseSchema,
@@ -50,8 +51,8 @@ export const api = {
   registerCompany: (body: Input<typeof RegisterCompanyRequestSchema>) =>
     request('/companies', { method: 'POST', body, schema: CompanySchema }),
   me: () => request('/me', { schema: CompanySchema }),
-  updateSettings: (fichaPublica: boolean) =>
-    request('/me/settings', { method: 'PATCH', body: { fichaPublica }, schema: CompanySchema }),
+  updateSettings: (patch: Input<typeof UpdateSettingsRequestSchema>) =>
+    request('/me/settings', { method: 'PATCH', body: patch, schema: CompanySchema }),
   lookup: (q: { code: string } | { ruc: string }) =>
     request('/companies/lookup', { query: q, schema: PublicCompanySchema }),
   contacts: (role: Role) =>

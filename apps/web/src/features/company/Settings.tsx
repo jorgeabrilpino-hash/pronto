@@ -1,3 +1,4 @@
+import type { Profile } from '@pronto/shared';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { api } from '@/api/endpoints';
@@ -6,6 +7,7 @@ import { Button, LinkButton } from '@/components/Button';
 import { ErrorNotice } from '@/components/ErrorNotice';
 import { IconChevron } from '@/components/icons';
 import { Screen } from '@/components/Screen';
+import { ProfileCards } from '@/features/auth/ProfileCards';
 import { signOut } from '@/features/auth/signIn';
 import { shortWallet } from '@/lib/format';
 
@@ -21,8 +23,12 @@ export function Settings() {
   const session = useSession();
   const navigate = useNavigate();
   const company = session?.company;
+  const changeProfile = useMutation({
+    mutationFn: (profile: Profile) => api.updateSettings({ profile }),
+    onSuccess: (c) => sessionStore.setCompany(c),
+  });
   const toggle = useMutation({
-    mutationFn: (next: boolean) => api.updateSettings(next),
+    mutationFn: (fichaPublica: boolean) => api.updateSettings({ fichaPublica }),
     onSuccess: (c) => sessionStore.setCompany(c),
   });
   if (!company || !session) return null;
@@ -57,6 +63,12 @@ export function Settings() {
         />
       </label>
       {toggle.isError ? <ErrorNotice error={toggle.error} /> : null}
+      <ProfileCards
+        value={company.profile}
+        onChange={(p) => changeProfile.mutate(p)}
+        disabled={changeProfile.isPending}
+      />
+      {changeProfile.isError ? <ErrorNotice error={changeProfile.error} /> : null}
       <nav aria-label="Tu cuenta" className="flex flex-col gap-3">
         {LINKS.map(([to, label]) => (
           <LinkButton key={to} to={to} variant="secondary" className="justify-between">

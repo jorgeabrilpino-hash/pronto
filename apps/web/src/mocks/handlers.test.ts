@@ -37,23 +37,39 @@ describe('mock API: auth and companies', () => {
     await loginAs(ADDR.fresh);
     expect(
       await codeOf(
-        api.registerCompany({ ruc: '20601234560', legalName: 'Nueva SAC', sector: 'Servicios' }),
+        api.registerCompany({
+          ruc: '20601234560',
+          legalName: 'Nueva SAC',
+          sector: 'Servicios',
+          profile: 'both',
+        }),
       ),
     ).toBe('RUC_INVALID');
     expect(
       await codeOf(
-        api.registerCompany({ ruc: '20601234565', legalName: 'Nueva SAC', sector: 'Servicios' }),
+        api.registerCompany({
+          ruc: '20601234565',
+          legalName: 'Nueva SAC',
+          sector: 'Servicios',
+          profile: 'both',
+        }),
       ),
     ).toBe('RUC_TAKEN');
     const c = await api.registerCompany({
       ruc: '20100070970',
       legalName: 'Nueva SAC',
       sector: 'Servicios',
+      profile: 'both',
     });
     expect(c.code).toMatch(/^PR-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{6}$/);
     expect(
       await codeOf(
-        api.registerCompany({ ruc: '20100070970', legalName: 'Otra', sector: 'Servicios' }),
+        api.registerCompany({
+          ruc: '20100070970',
+          legalName: 'Otra',
+          sector: 'Servicios',
+          profile: 'both',
+        }),
       ),
     ).toBe('WALLET_TAKEN');
   });
@@ -140,6 +156,17 @@ describe('mock API: offer lifecycle', () => {
     expect((await api.reconcileOffer(draft.offerIdHex)).chainStatus).toBe('accepted');
     expect((await api.invoice(target.id)).displayStatus).toBe('collected');
     expect((await api.offerProof(draft.offerIdHex)).network).toBe('testnet');
+  });
+
+  it('gates actions by company profile', async () => {
+    await loginAs(ADDR.buyer);
+    const target = (await api.invoices('buyer')).find((i) => i.number === '123');
+    if (!target) throw new Error('seed missing');
+    await api.updateSettings({ profile: 'supplier' });
+    const offer = { discountBps: 150, validityDays: 7 as const };
+    expect(await codeOf(api.draftOffer(target.id, offer))).toBe('FORBIDDEN');
+    await api.updateSettings({ profile: 'both' });
+    expect((await api.draftOffer(target.id, offer)).createdAt).toBeTruthy();
   });
 
   it('warns without blocking when the discount is above the supplier maximum', async () => {

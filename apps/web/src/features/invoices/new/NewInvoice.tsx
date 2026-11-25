@@ -1,7 +1,9 @@
 import type { PublicCompany } from '@pronto/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Navigate, useNavigate, useSearchParams } from 'react-router';
+import { useCompany } from '@/api/session';
+import { canSupply, profileOf } from '@/features/shell/centralAction';
 import type { XmlInvoiceData } from '../parseXml';
 import type { Uploaded } from '../upload';
 import { StepClient } from './StepClient';
@@ -11,12 +13,16 @@ import { StepDocument } from './StepDocument';
 /** View 5: client, document, data. The invoice shows up only in the client's "Por pagar". */
 export function NewInvoice() {
   const navigate = useNavigate();
+  const company = useCompany();
   const qc = useQueryClient();
   const [params] = useSearchParams();
   const [buyer, setBuyer] = useState<PublicCompany | null>(null);
   const [doc, setDoc] = useState<Uploaded | null>(null);
   const [xml, setXml] = useState<XmlInvoiceData>({});
   const [step, setStep] = useState<1 | 2 | 3>(1);
+
+  // Only a company that sells can send invoices (the server enforces it too).
+  if (!canSupply(profileOf(company))) return <Navigate to="/app" replace />;
 
   if (step === 2 && buyer) {
     return (
