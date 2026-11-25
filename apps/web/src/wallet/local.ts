@@ -1,4 +1,5 @@
 import { Keypair, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
+import { sessionStore } from '@/api/session';
 import { idbKeyStore, type KeyStore } from './keyStore';
 import { requestPin } from './pin';
 import { PIN_PATTERN } from './pinPattern';
@@ -11,6 +12,8 @@ import { WalletError, type WalletPort } from './types';
  * someone who already has the device data: this account holds no real value.
  */
 const ITERATIONS = 310_000;
+/** The decrypted key is dropped after this long without signing. */
+export const IDLE_LOCK_MS = 10 * 60_000;
 
 export class PinError extends Error {
   constructor() {
@@ -38,6 +41,19 @@ async function deriveKey(pin: string, salt: Uint8Array<ArrayBuffer>): Promise<Cr
 
 export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>) {
   let unlocked: Keypair | null = null;
+  let idle: ReturnType<typeof setTimeout> | undefined;
+
+  function lock(): void {
+    unlocked = null;
+    clearTimeout(idle);
+  }
+
+  function hold(kp: Keypair): Keypair {
+    unlocked = kp;
+    clearTimeout(idle);
+    idle = setTimeout(lock, IDLE_LOCK_MS);
+    return kp;
+  }
 
   async function unlock(pin: string): Promise<Keypair> {
     const saved = await store.get();
@@ -49,14 +65,13 @@ export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>
         key,
         saved.cipher,
       );
-      unlocked = Keypair.fromSecret(new TextDecoder().decode(plain));
-      return unlocked;
+      return hold(Keypair.fromSecret(new TextDecoder().decode(plain)));
     } catch {
       throw new PinError();
     }
   }
 
-  const keypair = async () => unlocked ?? unlock(await askPin());
+  const keypair = async () => (unlocked ? hold(unlocked) : unlock(await askPin()));
 
   const port: WalletPort = {
     async connect() {
@@ -71,12 +86,13 @@ export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>
       return tx.toXDR();
     },
     async disconnect() {
-      unlocked = null;
+      lock();
     },
   };
 
   return {
     port,
+    lock,
     unlock: async (pin: string) => (await unlock(pin)).publicKey(),
     address: async () => (await store.get())?.address ?? null,
     async create(pin: string): Promise<string> {
@@ -91,16 +107,24 @@ export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>
         new TextEncoder().encode(kp.secret()),
       );
       await store.put({ address: kp.publicKey(), salt, iv, cipher });
-      unlocked = kp;
+      hold(kp);
       return kp.publicKey();
     },
     /** Shown to the owner so they can recover the account. Needs the PIN again. */
     recoveryKey: async (pin: string) => (await unlock(pin)).secret(),
     forget: async () => {
-      unlocked = null;
+      lock();
       await store.clear();
     },
   };
 }
 
 export const localWallet = createLocalWallet(idbKeyStore, requestPin);
+
+// Every way a session ends (sign out, expired token, 401) also locks the key.
+let hadSession = sessionStore.get() !== null;
+sessionStore.subscribe(() => {
+  const has = sessionStore.get() !== null;
+  if (hadSession && !has) localWallet.lock();
+  hadSession = has;
+});

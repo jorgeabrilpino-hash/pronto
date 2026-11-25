@@ -14,7 +14,13 @@ export function walletKind(): WalletKind {
   }
 }
 
+/** Drops the decrypted test key, whatever wallet is selected right now. */
+export async function lockTestAccount(): Promise<void> {
+  (await import('./local')).localWallet.lock();
+}
+
 export function setWalletKind(kind: WalletKind): void {
+  if (kind !== 'local') void lockTestAccount();
   try {
     localStorage.setItem(KIND, kind);
   } catch {
@@ -40,6 +46,10 @@ export const wallet: WalletPort = {
     }
     return w.sign(xdr, address);
   },
-  disconnect: async () => (await impl()).disconnect(),
+  async disconnect() {
+    // Independent of the stored choice: the test key is always locked.
+    await lockTestAccount();
+    await (await impl()).disconnect();
+  },
 };
 export { WalletError } from './types';
