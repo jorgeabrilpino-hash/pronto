@@ -32,7 +32,7 @@ export interface CompanyRepository {
   byCode(code: string): Promise<Company | null>;
   byWallet(address: string): Promise<Company | null>;
   insert(company: Company): Promise<void>;
-  update(id: string, patch: Partial<Pick<Company, 'fichaPublica'>>): Promise<Company>;
+  update(id: string, patch: Partial<Pick<Company, 'fichaPublica' | 'profile'>>): Promise<Company>;
 }
 
 export interface InvoiceRepository {

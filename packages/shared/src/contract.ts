@@ -38,6 +38,12 @@ export const InvoiceStatusSchema = z.enum(['sent', 'rejected', 'confirmed', 'can
 export const ChainStatusSchema = z.enum(['pending', 'open', 'accepted', 'reclaimed', 'failed']);
 export const AttachmentKindSchema = z.enum(['pdf', 'image', 'xml']);
 export const RoleSchema = z.enum(['supplier', 'buyer']);
+/**
+ * Company profile chosen at registration. It gates actions: sending, cancelling and resending
+ * invoices need supplier or both; confirming, rejecting, preparing offers and reconciling as
+ * buyer need buyer or both. Reading lists is allowed for every profile.
+ */
+export const ProfileSchema = z.enum(['supplier', 'buyer', 'both']);
 /** Status the user sees: invoice status combined with the offer (computed, never stored). */
 export const DisplayStatusSchema = z.enum([
   'sent',
@@ -53,6 +59,7 @@ export type InvoiceStatus = z.infer<typeof InvoiceStatusSchema>;
 export type ChainStatus = z.infer<typeof ChainStatusSchema>;
 export type AttachmentKind = z.infer<typeof AttachmentKindSchema>;
 export type Role = z.infer<typeof RoleSchema>;
+export type Profile = z.infer<typeof ProfileSchema>;
 export type DisplayStatus = z.infer<typeof DisplayStatusSchema>;
 
 // ---- Errors --------------------------------------------------------------
@@ -85,8 +92,14 @@ export const RegisterCompanyRequestSchema = z.object({
   ruc: RucSchema,
   legalName: z.string().trim().min(2).max(200),
   sector: z.string().trim().min(2).max(80),
+  profile: ProfileSchema,
 });
-export const UpdateSettingsRequestSchema = z.object({ fichaPublica: z.boolean() });
+/** PATCH /me/settings: send at least one field. */
+export const UpdateSettingsRequestSchema = z
+  .object({ fichaPublica: z.boolean().optional(), profile: ProfileSchema.optional() })
+  .refine((d) => d.fichaPublica !== undefined || d.profile !== undefined, {
+    message: 'Send fichaPublica or profile',
+  });
 
 export const PublicCompanySchema = z.object({
   id: IdSchema,
@@ -98,6 +111,7 @@ export const CompanySchema = PublicCompanySchema.extend({
   sector: z.string(),
   wallet: StellarAddressSchema,
   fichaPublica: z.boolean(),
+  profile: ProfileSchema,
   createdAt: IsoDateTimeSchema,
 });
 
@@ -155,6 +169,10 @@ export const OfferSchema = z.object({
   txAccept: z.string().nullable(),
   txReclaim: z.string().nullable(),
   contractId: z.string().min(1),
+  /** When the offer was prepared (activity history). */
+  createdAt: IsoDateTimeSchema,
+  /** First time an accept was recorded; null until then. */
+  acceptedAt: IsoDateTimeSchema.nullable(),
 });
 
 export const OfferWarningSchema = z.enum(['DISCOUNT_ABOVE_SUPPLIER_MAX']);

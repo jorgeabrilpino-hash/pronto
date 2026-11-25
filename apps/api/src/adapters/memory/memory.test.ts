@@ -14,6 +14,7 @@ function company(id: string, n: string): Company {
     wallet: `G${n.repeat(55)}`,
     code: `PR-22222${n}`,
     fichaPublica: true,
+    profile: 'both',
     createdAt: NOW,
   };
 }
@@ -57,6 +58,7 @@ function offer(hex: string, invoiceId: string): Offer {
     contractId: 'C',
     lastCheckedAt: null,
     createdAt: NOW,
+    acceptedAt: null,
   };
 }
 
@@ -77,6 +79,9 @@ describe('memory adapters', () => {
       DomainError,
     );
     await expect(a.companies.update('nope', { fichaPublica: false })).rejects.toThrow(DomainError);
+    const updated = await a.companies.update('1', { profile: 'supplier' });
+    expect(updated.profile).toBe('supplier');
+    expect(updated.fichaPublica).toBe(true);
     expect(await a.companies.byId('nope')).toBeNull();
   });
 
@@ -106,6 +111,14 @@ describe('memory adapters', () => {
     await a.offers.update('a', { chainStatus: 'open', txCreate: 't1' });
     await a.offers.update('a', { chainStatus: 'open', txCreate: 't1' });
     expect(await a.offers.recentOperations(5)).toHaveLength(1);
+    expect((await a.offers.byOfferId('a'))?.acceptedAt).toBeNull();
+    a.clock.advanceSeconds(10);
+    const accepted = await a.offers.update('a', { chainStatus: 'accepted', txAccept: 't2' });
+    expect(accepted.acceptedAt?.getTime()).toBe(NOW.getTime() + 10_000);
+    a.clock.advanceSeconds(10);
+    const again = await a.offers.update('a', { txAccept: 't2' });
+    expect(again.acceptedAt?.getTime()).toBe(NOW.getTime() + 10_000);
+    await a.offers.update('a', { chainStatus: 'open' });
     expect(await a.offers.stats()).toEqual({ created: 1, accepted: 0 });
     expect((await a.offers.listFor('s')).map((o) => o.offerIdHex)).toEqual(['a']);
     expect(await a.offers.listFor('nobody')).toEqual([]);

@@ -1,4 +1,4 @@
-import type { Role, z } from '@pronto/shared';
+import type { Profile, Role, z } from '@pronto/shared';
 import {
   type AttachmentSchema,
   CompanySchema,
@@ -61,6 +61,24 @@ export async function requireCompany(
   return company;
 }
 
+/** True when a company with `profile` may act on the `side` of an invoice. */
+export function profileAllows(profile: Profile, side: Role): boolean {
+  return profile === 'both' || profile === side;
+}
+
+/**
+ * Gates an action by the company profile chosen at registration: supplier actions need
+ * supplier or both, buyer actions need buyer or both. Otherwise FORBIDDEN.
+ */
+export function requireProfile(company: Company, side: Role): void {
+  if (!profileAllows(company.profile, side)) {
+    throw new DomainError('FORBIDDEN', `The company profile does not allow ${side} actions`, {
+      profile: company.profile,
+      required: side,
+    });
+  }
+}
+
 export function requireActor(actor: Actor | null): Actor {
   if (actor === null) throw new DomainError('UNAUTHENTICATED');
   return actor;
@@ -107,6 +125,7 @@ export function toCompanyDto(c: Company): z.output<typeof CompanySchema> {
     sector: c.sector,
     wallet: c.wallet,
     fichaPublica: c.fichaPublica,
+    profile: c.profile,
     createdAt: c.createdAt.toISOString(),
   });
 }
@@ -124,6 +143,8 @@ export function toOfferDto(o: Offer): z.output<typeof OfferSchema> {
     txAccept: o.txAccept,
     txReclaim: o.txReclaim,
     contractId: o.contractId,
+    createdAt: o.createdAt.toISOString(),
+    acceptedAt: o.acceptedAt === null ? null : o.acceptedAt.toISOString(),
   };
 }
 

@@ -66,6 +66,7 @@ export interface Companies {
   ficha_publica: Generated<boolean>;
   id: Generated<string>;
   legal_name: string;
+  profile: Generated<string>;
   ruc: string;
   sector: string;
   updated_at: Generated<Timestamp>;

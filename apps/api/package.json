@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "node --experimental-transform-types --disable-warning=ExperimentalWarning src/dev-server.ts",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
   },

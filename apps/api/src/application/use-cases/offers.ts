@@ -36,6 +36,7 @@ import {
   parseInput,
   parseOutput,
   requireCompany,
+  requireProfile,
   roleOn,
   toOfferDto,
 } from './shared';
@@ -86,6 +87,7 @@ export class PrepareOffer {
     input: unknown,
   ): Promise<z.output<typeof OfferDraftResponseSchema>> {
     const me = await requireCompany(this.deps.companies, actor);
+    requireProfile(me, 'buyer');
     const req = parseInput(PrepareOfferRequestSchema, input);
     const invoice = await loadInvoice(this.deps.invoices, invoiceId);
     if (roleOn(invoice, me.id) !== 'buyer') {
@@ -127,6 +129,7 @@ export class PrepareOffer {
       contractId: this.deps.chain.contractId(),
       lastCheckedAt: null,
       createdAt: now,
+      acceptedAt: null,
     };
     await this.deps.offers.insertPending(offer);
     await this.deps.audit.record({
@@ -168,7 +171,8 @@ export class ReconcileOffer implements OfferRefresher {
     const { txHash } = parseInput(ReconcileRequestSchema, input);
     const offer = await loadOffer(this.deps.offers, offerIdHex);
     const invoice = await loadInvoice(this.deps.invoices, offer.invoiceId);
-    roleOn(invoice, me.id);
+    const role = roleOn(invoice, me.id);
+    if (role === 'buyer') requireProfile(me, 'buyer');
     await enforceRateLimit(
       this.deps.rateLimiter,
       `reconcile:${me.id}`,

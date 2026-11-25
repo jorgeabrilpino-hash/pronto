@@ -39,6 +39,7 @@ import {
   parseInput,
   requireActor,
   requireCompany,
+  requireProfile,
   roleOn,
   toInvoiceDto,
 } from './shared';
@@ -69,6 +70,7 @@ export class SendInvoice {
 
   async execute(actor: Actor | null, input: unknown): Promise<InvoiceDto> {
     const me = await requireCompany(this.deps.companies, actor);
+    requireProfile(me, 'supplier');
     const req = parseInput(CreateInvoiceRequestSchema, input);
     const buyer = await loadCompany(this.deps.companies, req.buyerCompanyId);
     assertDifferentParties(me.id, buyer.id);
@@ -199,6 +201,7 @@ async function transition(
   liveOfferCheck?: (offers: Offer[]) => Promise<boolean>,
 ): Promise<InvoiceDto> {
   const me = await requireCompany(deps.companies, actor);
+  requireProfile(me, ACTION_ACTOR[action]);
   const invoice = await loadInvoice(deps.invoices, invoiceId);
   const role = roleOn(invoice, me.id);
   const offers = await deps.offers.byInvoice(invoice.id);

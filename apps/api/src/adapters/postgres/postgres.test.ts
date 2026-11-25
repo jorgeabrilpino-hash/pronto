@@ -41,6 +41,7 @@ function company(extra: Partial<Company> = {}): Company {
     wallet: `G${pick(B32, 55)}`,
     code: `PR-${pick(CODE_ALPHABET, 6)}`,
     fichaPublica: true,
+    profile: 'both',
     createdAt: NOW,
     ...extra,
   };
@@ -84,6 +85,7 @@ function offer(invoiceId: string, extra: Partial<Offer> = {}): Offer {
     contractId: 'CTEST',
     lastCheckedAt: null,
     createdAt: NOW,
+    acceptedAt: null,
     ...extra,
   };
 }
@@ -245,6 +247,13 @@ describe.skipIf(!DATABASE_URL)('postgres adapters (real database, rolled back)',
       await rejectsWith(trx, 'INTERNAL', () => a.companies.insert(company({ code: c.code })));
       expect((await a.companies.update(c.id, { fichaPublica: false })).fichaPublica).toBe(false);
       expect((await a.companies.update(c.id, {})).fichaPublica).toBe(false);
+      const buyer = await a.companies.update(c.id, { profile: 'buyer' });
+      expect(buyer.profile).toBe('buyer');
+      expect(buyer.fichaPublica).toBe(false);
+      expect((await a.companies.byId(c.id))?.profile).toBe('buyer');
+      const s = company({ profile: 'supplier' });
+      await a.companies.insert(s);
+      expect((await a.companies.byId(s.id))?.profile).toBe('supplier');
       await rejectsWith(trx, 'COMPANY_NOT_FOUND', () =>
         a.companies.update(randomUUID(), { fichaPublica: false }),
       );
@@ -340,6 +349,11 @@ describe.skipIf(!DATABASE_URL)('postgres adapters (real database, rolled back)',
         txAccept: t2,
       });
       expect(accepted.txAccept).toBe(t2);
+      expect(accepted.acceptedAt).toBeInstanceOf(Date);
+      expect(accepted.createdAt).toBeInstanceOf(Date);
+      // accepted_at is stamped once: a later accept write keeps the first time.
+      const again = await a.offers.update(o.offerIdHex, { txAccept: t2 });
+      expect(again.acceptedAt?.getTime()).toBe(accepted.acceptedAt?.getTime());
       const row = await trx
         .selectFrom('offers')
         .select('accepted_at')

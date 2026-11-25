@@ -2,7 +2,12 @@ import { CompanyPageSchema, CompanySchema, PublicCompanySchema } from '@pronto/s
 import { describe, expect, it } from 'vitest';
 import { expectCode, makeKit, ruc, wallet } from './kit';
 
-const body = { ruc: '20100070970', legalName: 'Imprenta Sur SAC', sector: 'Imprenta' };
+const body = {
+  ruc: '20100070970',
+  legalName: 'Imprenta Sur SAC',
+  sector: 'Imprenta',
+  profile: 'supplier',
+};
 
 describe('03 RegisterCompany', () => {
   it('happy path: creates the company with a PR- code', async () => {

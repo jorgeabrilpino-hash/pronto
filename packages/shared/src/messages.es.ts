@@ -33,4 +33,7 @@ export const MESSAGES_ES = {
   SIGNATURE_INVALID: { message: 'No pudimos verificar tu firma', action: 'Firmar de nuevo' },
   RATE_LIMITED: { message: 'Demasiados intentos, espera un momento', action: 'Reintentar' },
   INTERNAL: { message: 'Algo salió mal de nuestro lado', action: 'Reintentar' },
+  NOT_FOUND: { message: 'Esa dirección no existe', action: 'Volver' },
+  PAYLOAD_TOO_LARGE: { message: 'Enviaste demasiados datos', action: 'Corregir' },
+  FEATURE_UNAVAILABLE: { message: 'Esta función todavía no está disponible', action: 'Volver' },
 } satisfies Record<ErrorCode, UserMessage>;

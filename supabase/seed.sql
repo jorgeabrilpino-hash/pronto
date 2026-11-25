@@ -5,22 +5,23 @@
 -- placeholders: they do not exist on the network or in the storage bucket.
 
 -- ---------------------------------------------------------------------------
--- Companies: buyer and supplier
+-- Companies: buyer and supplier (profile matches their side in the demo)
 -- ---------------------------------------------------------------------------
 
-insert into public.companies (id, ruc, legal_name, sector, wallet, code, ficha_publica)
+insert into public.companies (id, ruc, legal_name, sector, wallet, code, ficha_publica, profile)
 values
   ('c0000000-0000-4000-8000-000000000001', '20604123985', 'Constructora Andina del Sur S.A.C.',
-   'Construccion', 'GABXMVQFX6R74OUC6TGL3YGO7TLGV7R34RVAGTJE42UUXCVA4IELCKU3', 'PR-7KM2QX', true),
+   'Construccion', 'GABXMVQFX6R74OUC6TGL3YGO7TLGV7R34RVAGTJE42UUXCVA4IELCKU3', 'PR-7KM2QX', true, 'buyer'),
   ('c0000000-0000-4000-8000-000000000002', '20605871241', 'Textiles Pacha Mama E.I.R.L.',
-   'Textil y confeccion', 'GCKU5G3MCJD4HM44QCK2E3D3Y6AIC3YZNG2EZ2HRWT4CF6LNSUWWVQTY', 'PR-B4N9TW', false)
+   'Textil y confeccion', 'GCKU5G3MCJD4HM44QCK2E3D3Y6AIC3YZNG2EZ2HRWT4CF6LNSUWWVQTY', 'PR-B4N9TW', false, 'supplier')
 on conflict (id) do update set
   ruc = excluded.ruc,
   legal_name = excluded.legal_name,
   sector = excluded.sector,
   wallet = excluded.wallet,
   code = excluded.code,
-  ficha_publica = excluded.ficha_publica;
+  ficha_publica = excluded.ficha_publica,
+  profile = excluded.profile;
 
 -- ---------------------------------------------------------------------------
 -- Invoices (supplier Textiles Pacha Mama -> buyer Constructora Andina del Sur)
