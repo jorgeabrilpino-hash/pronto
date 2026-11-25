@@ -97,6 +97,26 @@ describe('11 PrepareOffer', () => {
     );
   });
 
+  it('rounds the discount to whole cents: 2400.50 at 1.5 % -> 36.01 and net 2364.49', async () => {
+    const k = makeKit();
+    const supplier = await k.company(1);
+    const buyer = await k.company(2);
+    const att = await k.readyAttachment(supplier.actor);
+    const inv = await k.uc.sendInvoice.execute(
+      supplier.actor,
+      k.invoiceInput(buyer.id, att, { faceAmount: '2400.50' }),
+    );
+    await k.uc.confirmInvoice.execute(buyer.actor, inv.id);
+    const draft = await k.uc.prepareOffer.execute(buyer.actor, inv.id, {
+      discountBps: 150,
+      validityDays: 7,
+    });
+    expect(draft.discountAmount).toBe('36.0100000');
+    expect(draft.netAmount).toBe('2364.4900000');
+    // 27 days: 36.01 / 2364.49 * 365 / 27 = 20.588 % -> 2059 bps.
+    expect(draft.annualizedBps).toBe(2059);
+  });
+
   it('a discount that rounds to zero is rejected', async () => {
     const k = makeKit();
     const supplier = await k.company(1);

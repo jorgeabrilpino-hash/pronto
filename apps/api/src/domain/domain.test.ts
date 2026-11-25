@@ -6,10 +6,12 @@ import {
   annualizedBps,
   assertDifferentParties,
   assertInvoiceDates,
+  CENT,
   COMPANY_CODE_ALPHABET,
   currentOffer,
   daysBetween,
   discount,
+  discountFromBps,
   displayStatus,
   formatInvoiceRef,
   formatMoney,
@@ -136,10 +138,27 @@ describe('finance', () => {
     expect(annualizedBps(d, net, 30)).toBe(1853);
   });
 
-  it('rounds the discount down so the net never goes below the exact value', () => {
-    // 0.0000003 * 150 bps = 0.0000000045 -> discount 0, net equals face.
+  it('rounds the discount half up to whole cents and nets face minus discount', () => {
+    // 2400.50 * 1.5 % = 36.0075 -> discount 36.01, net 2364.49.
+    const face = parseMoney('2400.50');
+    expect(formatMoney(discountFromBps(face, 150))).toBe('36.0100000');
+    expect(formatMoney(netFromDiscount(face, 150))).toBe('2364.4900000');
+    // 0.30 * 1.5 % = 0.0045 -> 0.00; 0.50 * 1 % = 0.005 -> 0.01 (half up).
+    expect(discountFromBps(parseMoney('0.30'), 150)).toBe(0n);
+    expect(formatMoney(discountFromBps(parseMoney('0.50'), 100))).toBe('0.0100000');
+    // 0.0000003 at 150 bps -> discount 0, net equals face.
     expect(netFromDiscount(3n, 150)).toBe(3n);
-    expect(netFromDiscount(1_000_001n, 5000)).toBe(500_001n);
+  });
+
+  it('net and discount have at most 2 decimals for any face with cents', () => {
+    for (const f of ['1', '0.01', '99.99', '2400.50', '123456.78', '7.07']) {
+      for (const bps of [1, 37, 150, 999, 5000]) {
+        const face = parseMoney(f);
+        const net = netFromDiscount(face, bps);
+        expect(net % CENT).toBe(0n);
+        expect(discount(face, net) % CENT).toBe(0n);
+      }
+    }
   });
 
   it('rounds the annualized cost half up', () => {

@@ -1,7 +1,8 @@
 /**
  * Stable error codes shared by API and front end.
  * VALIDATION_ERROR, UNAUTHENTICATED and INTERNAL are not in the business list of
- * BACKEND_PLAN section 4; they cover HTTP 400, 401 and 500.
+ * BACKEND_PLAN section 4; they cover HTTP 400, 401 and 500. NOT_FOUND, PAYLOAD_TOO_LARGE and
+ * FEATURE_UNAVAILABLE cover an unknown route, a body over 1 MB and a feature not built yet.
  */
 export const ERROR_CODES = [
   'VALIDATION_ERROR',
@@ -24,6 +25,10 @@ export const ERROR_CODES = [
   'SIGNATURE_INVALID',
   'RATE_LIMITED',
   'INTERNAL',
+  // Additions from B4 (HTTP layer): unknown route, oversized body, feature not built yet.
+  'NOT_FOUND',
+  'PAYLOAD_TOO_LARGE',
+  'FEATURE_UNAVAILABLE',
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
@@ -49,6 +54,9 @@ export const HTTP_STATUS: Record<ErrorCode, number> = {
   SIGNATURE_INVALID: 401,
   RATE_LIMITED: 429,
   INTERNAL: 500,
+  NOT_FOUND: 404,
+  PAYLOAD_TOO_LARGE: 413,
+  FEATURE_UNAVAILABLE: 503,
 };
 
 export class DomainError extends Error {
