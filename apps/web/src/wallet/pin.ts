@@ -20,6 +20,11 @@ export const pinStore = {
   },
 };
 
+/** A lock also drops any PIN prompt that is still open. */
+export function cancelPin(): void {
+  pending?.reject();
+}
+
 export function requestPin(): Promise<string> {
   pending?.reject();
   return new Promise<string>((resolve, reject) => {

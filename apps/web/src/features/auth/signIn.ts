@@ -7,18 +7,24 @@ import { wallet } from '@/wallet';
 /** Wallet connect, signed challenge, session (kept in sessionStorage until it expires). */
 export async function signIn(): Promise<Session> {
   const address = await wallet.connect();
-  const challenge = await api.challenge(address);
-  if (!env.useMocks) assertChallenge(challenge.challengeXdr, challenge.nonce, address);
-  const signed = await wallet.sign(challenge.challengeXdr, address);
-  const res = await api.verify(address, signed);
-  const session: Session = {
-    address,
-    token: res.token,
-    expiresAt: res.expiresAt,
-    company: res.company,
-  };
-  sessionStore.set(session);
-  return session;
+  try {
+    const challenge = await api.challenge(address);
+    if (!env.useMocks) assertChallenge(challenge.challengeXdr, challenge.nonce, address);
+    const signed = await wallet.sign(challenge.challengeXdr, address);
+    const res = await api.verify(address, signed);
+    const session: Session = {
+      address,
+      token: res.token,
+      expiresAt: res.expiresAt,
+      company: res.company,
+    };
+    sessionStore.set(session);
+    return session;
+  } catch (e) {
+    // A failed sign-in never leaves the wallet unlocked or connected.
+    await wallet.disconnect().catch(() => undefined);
+    throw e;
+  }
 }
 
 export async function signOut(): Promise<void> {

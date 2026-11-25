@@ -2,7 +2,7 @@
 import { Account, Keypair, Networks, Operation, TransactionBuilder } from '@stellar/stellar-sdk';
 import { describe, expect, it } from 'vitest';
 import type { KeyStore, StoredKey } from './keyStore';
-import { createLocalWallet, PinError } from './local';
+import { createLocalWallet, IDLE_LOCK_MS, PinError } from './local';
 
 function memoryStore() {
   let value: StoredKey | null = null;
@@ -52,6 +52,41 @@ describe('local test wallet', () => {
     expect(asked).toBe(0);
     await w.port.disconnect();
     await expect(w.port.connect()).resolves.toBe(address);
+    expect(asked).toBe(1);
+    w.lock();
+  });
+
+  it('a lock during an in-flight unlock wins', async () => {
+    const mem = memoryStore();
+    await createLocalWallet(mem.store, async () => PIN).create(PIN);
+    let asked = 0;
+    const w = createLocalWallet(mem.store, async () => {
+      asked++;
+      return PIN;
+    });
+    const pending = w.port.connect();
+    w.lock();
+    await expect(pending).rejects.toThrow();
+    await expect(w.port.connect()).resolves.toBeTruthy();
+    expect(asked).toBeGreaterThan(0);
+    w.lock();
+  });
+
+  it('asks for the PIN once the idle deadline passes, even if no timer fired', async () => {
+    let time = 1_000;
+    let asked = 0;
+    const mem = memoryStore();
+    const ask = async () => {
+      asked++;
+      return PIN;
+    };
+    const w = createLocalWallet(mem.store, ask, { now: () => time });
+    await w.create(PIN);
+    time += IDLE_LOCK_MS - 1;
+    await w.port.connect();
+    expect(asked).toBe(0);
+    time += IDLE_LOCK_MS;
+    await w.port.connect();
     expect(asked).toBe(1);
     w.lock();
   });

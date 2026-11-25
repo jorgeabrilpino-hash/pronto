@@ -1,7 +1,7 @@
 import { Keypair, Networks, TransactionBuilder } from '@stellar/stellar-sdk';
 import { sessionStore } from '@/api/session';
 import { idbKeyStore, type KeyStore } from './keyStore';
-import { requestPin } from './pin';
+import { cancelPin, requestPin } from './pin';
 import { PIN_PATTERN } from './pinPattern';
 import { WalletError, type WalletPort } from './types';
 
@@ -39,25 +39,43 @@ async function deriveKey(pin: string, salt: Uint8Array<ArrayBuffer>): Promise<Cr
   );
 }
 
-export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>) {
+export function createLocalWallet(
+  store: KeyStore,
+  askPin: () => Promise<string>,
+  opts: { cancelPin?: () => void; now?: () => number } = {},
+) {
+  const now = opts.now ?? Date.now;
   let unlocked: Keypair | null = null;
   let idle: ReturnType<typeof setTimeout> | undefined;
+  let deadline = 0;
+  /** Bumped by every lock: work started before a lock may never unlock afterwards. */
+  let generation = 0;
 
   function lock(): void {
+    generation++;
     unlocked = null;
     clearTimeout(idle);
+    opts.cancelPin?.();
   }
 
-  function hold(kp: Keypair): Keypair {
+  function hold(kp: Keypair, since: number): Keypair {
+    if (since !== generation) throw new WalletError('rejected');
     unlocked = kp;
+    deadline = now() + IDLE_LOCK_MS;
     clearTimeout(idle);
     idle = setTimeout(lock, IDLE_LOCK_MS);
     return kp;
   }
 
-  async function unlock(pin: string): Promise<Keypair> {
+  /** Timers are throttled in background tabs, so the deadline is checked on every use. */
+  function lockIfIdle(): void {
+    if (unlocked && now() >= deadline) lock();
+  }
+
+  async function unlock(pin: string, since: number = generation): Promise<Keypair> {
     const saved = await store.get();
     if (!saved) throw new WalletError('missing');
+    let secret: string;
     try {
       const key = await deriveKey(pin, saved.salt);
       const plain = await crypto.subtle.decrypt(
@@ -65,13 +83,21 @@ export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>
         key,
         saved.cipher,
       );
-      return hold(Keypair.fromSecret(new TextDecoder().decode(plain)));
+      secret = new TextDecoder().decode(plain);
     } catch {
       throw new PinError();
     }
+    return hold(Keypair.fromSecret(secret), since);
   }
 
-  const keypair = async () => (unlocked ? hold(unlocked) : unlock(await askPin()));
+  async function keypair(): Promise<Keypair> {
+    lockIfIdle();
+    const since = generation;
+    if (unlocked) return hold(unlocked, since);
+    const pin = await askPin();
+    if (since !== generation) throw new WalletError('rejected');
+    return unlock(pin, since);
+  }
 
   const port: WalletPort = {
     async connect() {
@@ -93,11 +119,13 @@ export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>
   return {
     port,
     lock,
+    lockIfIdle,
     unlock: async (pin: string) => (await unlock(pin)).publicKey(),
     address: async () => (await store.get())?.address ?? null,
     async create(pin: string): Promise<string> {
       if (!PIN_PATTERN.test(pin)) throw new PinError();
       if (await store.get()) throw new WalletError('rejected');
+      const since = generation;
       const kp = Keypair.random();
       const salt = crypto.getRandomValues(new Uint8Array(16));
       const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -107,7 +135,7 @@ export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>
         new TextEncoder().encode(kp.secret()),
       );
       await store.put({ address: kp.publicKey(), salt, iv, cipher });
-      hold(kp);
+      hold(kp, since);
       return kp.publicKey();
     },
     /** Shown to the owner so they can recover the account. Needs the PIN again. */
@@ -119,12 +147,15 @@ export function createLocalWallet(store: KeyStore, askPin: () => Promise<string>
   };
 }
 
-export const localWallet = createLocalWallet(idbKeyStore, requestPin);
+export const localWallet = createLocalWallet(idbKeyStore, requestPin, { cancelPin });
 
 // Every way a session ends (sign out, expired token, 401) also locks the key.
-let hadSession = sessionStore.get() !== null;
 sessionStore.subscribe(() => {
-  const has = sessionStore.get() !== null;
-  if (hadSession && !has) localWallet.lock();
-  hadSession = has;
+  if (sessionStore.get() === null) localWallet.lock();
 });
+
+if (typeof document !== 'undefined') {
+  const check = () => localWallet.lockIfIdle();
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('pageshow', check);
+}

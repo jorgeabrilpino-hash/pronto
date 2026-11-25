@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router';
-import { useSession } from '@/api/session';
+import { sessionStore, useSession } from '@/api/session';
+import { lockTestAccount } from '@/wallet';
 import { nextRoute } from './signIn';
 import { BackupStep } from './testAccount/BackupStep';
 import { FundStep } from './testAccount/FundStep';
@@ -15,6 +16,14 @@ type Step =
 export function TestAccount() {
   const session = useSession();
   const [step, setStep] = useState<Step>({ id: 'pin' });
+
+  // Leaving the flow without signing in locks the new key.
+  useEffect(
+    () => () => {
+      if (!sessionStore.get()) void lockTestAccount();
+    },
+    [],
+  );
 
   if (session) return <Navigate to={nextRoute(session)} replace />;
   if (step.id === 'pin') {
