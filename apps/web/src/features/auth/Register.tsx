@@ -31,7 +31,9 @@ export function Register() {
       <Screen
         title="Tu empresa"
         back={false}
-        footer={<Button onClick={() => navigate('/fondos', { replace: true })}>Continuar</Button>}
+        footer={
+          <Button onClick={() => navigate('/bienvenida', { replace: true })}>Continuar</Button>
+        }
       >
         <h2 className="text-2xl font-bold">Listo, ya estás en Pronto</h2>
         <CodeCard company={company} />

@@ -81,6 +81,6 @@ describe('offer lifecycle through the screens', () => {
     await loginAs(ADDR.supplier);
     renderAt('/app');
     expect(await screen.findByText('Requiere tu acción')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Nueva factura/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Nueva factura/ }).length).toBeGreaterThan(0);
   });
 });

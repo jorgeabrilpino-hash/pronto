@@ -7,6 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_NETWORK_PASSPHRASE?: string;
   readonly VITE_PRONTO_CONTRACT_ID?: string;
   readonly VITE_USDC_SAC_ID?: string;
+  readonly VITE_ASSET_CODE?: string;
 }
 
 interface ImportMeta {

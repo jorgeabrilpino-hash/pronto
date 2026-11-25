@@ -1,7 +1,9 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
-import { Landing } from '@/features/auth/Landing';
+import { Onboarding } from '@/features/auth/Onboarding';
 import { Register } from '@/features/auth/Register';
 import { RequireAuth } from '@/features/auth/RequireAuth';
+import { WalletGuide } from '@/features/auth/WalletGuide';
+import { Welcome } from '@/features/auth/Welcome';
 import { MyCode } from '@/features/code/MyCode';
 import { CompanyPage } from '@/features/company/CompanyPage';
 import { Contacts } from '@/features/company/Contacts';
@@ -17,8 +19,10 @@ import { Receipt } from '@/features/offers/Receipt';
 import { Placeholder } from './Placeholder';
 
 export const routeTable: RouteObject[] = [
-  { path: '/', element: <Landing /> },
+  { path: '/', element: <Welcome /> },
   { path: '/registro', element: <Register /> },
+  { path: '/billetera', element: <WalletGuide /> },
+  { path: '/bienvenida', element: <Onboarding /> },
   { path: '/e/:code', element: <CompanyPage /> },
   { path: '/red', element: <NetworkPage /> },
   {
@@ -26,6 +30,9 @@ export const routeTable: RouteObject[] = [
     children: [
       { path: '/fondos', element: <Funds /> },
       { path: '/app', element: <Home /> },
+      { path: '/facturas', element: <Placeholder title="Facturas" /> },
+      { path: '/calendario', element: <Placeholder title="Calendario" /> },
+      { path: '/como-funciona', element: <Placeholder title="Cómo funciona" /> },
       { path: '/facturas/nueva', element: <NewInvoice /> },
       { path: '/cobrar/:id', element: <ReceivableDetail /> },
       { path: '/pagar/:id', element: <PayableDetail /> },

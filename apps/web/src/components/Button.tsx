@@ -5,14 +5,16 @@ import { IconSpinner } from './icons';
 export type ButtonVariant = 'primary' | 'secondary' | 'text' | 'danger';
 
 const base =
-  'inline-flex items-center justify-center gap-2 font-semibold select-none transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none';
+  'inline-flex items-center justify-center gap-2 font-semibold select-none disabled:opacity-40 disabled:pointer-events-none';
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'h-[52px] w-full rounded-full bg-gold text-ink active:brightness-95 text-base',
+  primary:
+    'hard h-[52px] w-full border-2 border-ink bg-signal px-5 text-base text-ink uppercase tracking-wide',
   secondary:
-    'min-h-11 rounded-full border-[1.5px] border-line bg-ivory px-5 text-ink active:bg-pressed text-[15px]',
-  text: 'min-h-11 rounded-full px-3 text-muted active:text-ink text-[15px] font-medium',
-  danger: 'min-h-11 rounded-full px-3 text-muted active:text-danger text-[15px] font-medium',
+    'hard min-h-11 border-2 border-ink bg-card px-5 text-[15px] text-ink active:bg-pressed',
+  text: 'min-h-11 px-3 text-[15px] font-medium text-ink underline underline-offset-4 decoration-2',
+  danger:
+    'min-h-11 px-3 text-[15px] font-medium text-muted underline underline-offset-4 active:text-danger',
 };
 
 interface Common {

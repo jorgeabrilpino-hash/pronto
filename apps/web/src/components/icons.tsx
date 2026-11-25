@@ -119,3 +119,58 @@ export const IconSpinner = (p: IconProps) => (
     <path d="M12 3a9 9 0 1 0 9 9" />
   </Base>
 );
+
+export const IconHome = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 11l8-7 8 7v9H4z" />
+    <path d="M10 20v-6h4v6" />
+  </Base>
+);
+export const IconList = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M9 6h11M9 12h11M9 18h11" />
+    <path d="M4 6h.01M4 12h.01M4 18h.01" />
+  </Base>
+);
+export const IconCalendar = (p: IconProps) => (
+  <Base {...p}>
+    <rect x="4" y="5" width="16" height="15" />
+    <path d="M4 10h16M9 3v4M15 3v4" />
+  </Base>
+);
+export const IconUser = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 20c1.5-4 4.5-5.5 8-5.5s6.5 1.5 8 5.5" />
+  </Base>
+);
+export const IconUsers = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="9" cy="8" r="3.5" />
+    <path d="M2.5 19c1-3.5 3.5-5 6.5-5s5.5 1.5 6.5 5" />
+    <path d="M16 5a3.5 3.5 0 0 1 0 6.5M18 14.5c2 .6 3 2.3 3.5 4.5" />
+  </Base>
+);
+export const IconInfo = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v6M12 7.5v.1" />
+  </Base>
+);
+export const IconLogout = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M10 4H5v16h5M15 8l4 4-4 4M19 12H9" />
+  </Base>
+);
+export const IconWallet = (p: IconProps) => (
+  <Base {...p}>
+    <path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1z" />
+    <path d="M4 7l12-3v3M16 13.5h.01" />
+  </Base>
+);
+export const IconGlobe = (p: IconProps) => (
+  <Base {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
+  </Base>
+);

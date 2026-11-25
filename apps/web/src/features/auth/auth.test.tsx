@@ -15,6 +15,7 @@ vi.mock('@/wallet', async () => ({ wallet: (await import('@/wallet/mock')).mockW
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 beforeEach(() => resetMockApi());
 afterEach(() => {
+  localStorage.clear();
   sessionStore.set(null);
   server.resetHandlers();
 });
@@ -36,14 +37,14 @@ describe('sign in and registration', () => {
   it('a registered wallet goes straight to the app', async () => {
     selectMockAccount(SUPPLIER_ADDRESS);
     const router = renderAt('/');
-    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
-    await waitFor(() => expect(router.state.location.pathname).toBe('/app'));
+    await userEvent.click(screen.getByRole('button', { name: 'Conectar mi billetera' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/bienvenida'));
   });
 
   it('a new wallet registers, sees its code and QR, then continues to funds', async () => {
     selectMockAccount(NEW_ADDRESS);
     const router = renderAt('/');
-    await userEvent.click(screen.getByRole('button', { name: 'Entrar' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Conectar mi billetera' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/registro'));
 
     await userEvent.type(await screen.findByLabelText('RUC'), '20601234560');
@@ -58,6 +59,8 @@ describe('sign in and registration', () => {
     expect(await screen.findByText(/^PR-[2-9A-Z]{6}$/)).toBeInTheDocument();
     expect(screen.getByRole('img', { name: /^QR de PR-/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Continuar' }));
+    await waitFor(() => expect(router.state.location.pathname).toBe('/bienvenida'));
+    await userEvent.click(await screen.findByRole('button', { name: 'Saltar' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/fondos'));
   });
 

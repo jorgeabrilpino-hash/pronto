@@ -1,5 +1,6 @@
-import { Navigate, Outlet, useLocation } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { useSession } from '@/api/session';
+import { AppShell } from '@/features/shell/AppShell';
 
 /** Layout guard: signed in and registered. Everything else goes to the public start. */
 export function RequireAuth() {
@@ -7,5 +8,5 @@ export function RequireAuth() {
   const { pathname } = useLocation();
   if (!session) return <Navigate to="/" replace state={{ from: pathname }} />;
   if (!session.company) return <Navigate to="/registro" replace />;
-  return <Outlet />;
+  return <AppShell />;
 }

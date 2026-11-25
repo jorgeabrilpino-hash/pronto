@@ -3,14 +3,14 @@ import type { ReactNode } from 'react';
 type Tone = 'neutral' | 'green' | 'gold' | 'danger' | 'muted-outline';
 
 const tones: Record<Tone, string> = {
-  neutral: 'border-line bg-ivory text-muted',
-  green: 'border-green text-green bg-green-tint',
-  gold: 'border-gold bg-gold/25 text-ink',
-  danger: 'border-danger bg-danger-tint text-danger',
-  'muted-outline': 'border-line bg-transparent text-muted',
+  neutral: 'border-ink bg-card text-ink',
+  green: 'border-green bg-card text-green',
+  gold: 'border-ink bg-signal text-ink',
+  danger: 'border-danger bg-card text-danger',
+  'muted-outline': 'border-ink bg-transparent text-ink',
 };
 
-/** Flat status label: always icon + text, never color alone. */
+/** Outlined status pill: always icon + text, never color alone. */
 export function Chip({
   tone = 'neutral',
   icon,
@@ -22,7 +22,7 @@ export function Chip({
 }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[13px] font-medium ${tones[tone]}`}
+      className={`label inline-flex items-center gap-1.5 whitespace-nowrap border-2 px-2 py-1 ${tones[tone]}`}
     >
       {icon}
       {children}
