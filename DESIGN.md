@@ -79,7 +79,7 @@ Español neutro, tuteo, verbos directos. Descuento siempre en porcentaje; el equ
 ## 10. Sesión y conexión
 
 - **Billetera:** Stellar Wallets Kit (Varial o Freighter en escritorio; WalletConnect en teléfonos). La conexión es real; la demostración es un modo aparte.
-- **Sesión:** el JWT (1 h) se guarda en `sessionStorage` para sobrevivir a una recarga o a cambiar de app. **Compromiso:** un script malicioso en la página podría leerlo (a diferencia de la memoria pura); se mitiga con vida corta, sin datos sensibles en el token, CSP y sin HTML inyectado. Al vencer, se vuelve a firmar con la billetera sin pasar por la bienvenida.
+- **Sesión:** el JWT (1 h) se guarda en `sessionStorage` para sobrevivir a una recarga o a cambiar de app. **Compromiso:** un script malicioso en la página podría leerlo (a diferencia de la memoria pura); se mitiga con vida corta, sin datos sensibles en el token, sin HTML inyectado y con la CSP de `apps/web/vercel.json` (script-src solo propio; connect-src limitado a la API, RPC, Horizon y WalletConnect: añadir el host de la API real al desplegar). Al vencer, se vuelve a firmar con la billetera sin pasar por la bienvenida.
 - **API:** un único interruptor de entorno (`VITE_USE_MOCKS`) cambia entre la API simulada y la real.
 
 ## 11. Accesibilidad

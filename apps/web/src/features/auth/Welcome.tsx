@@ -82,7 +82,7 @@ export function Welcome() {
           </>
         }
       />
-      {demoOn ? (
+      {env.useMocks ? (
         <fieldset className="flex flex-col gap-2 border-0 p-0">
           <legend className="label mb-2 text-muted">Cuenta de prueba</legend>
           <div className="flex flex-wrap gap-2">
