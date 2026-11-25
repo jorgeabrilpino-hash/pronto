@@ -1,8 +1,12 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { DomainError } from '@pronto/shared';
-import type { Context } from 'hono';
 import { JwtTokenService, StellarSignatureVerifier } from '../adapters/auth';
-import { createHttpApp, type HttpEnv } from '../adapters/http';
+import {
+  type ClientIpResolver,
+  createHttpApp,
+  type HttpEnv,
+  type SocketIp,
+} from '../adapters/http';
 import { createMemoryAdapters, type MemoryAdapters } from '../adapters/memory';
 import { createDatabase, createPostgresAdapters } from '../adapters/postgres';
 import { FetchJsonRpcTransport, StellarChainReader } from '../adapters/stellar';
@@ -12,6 +16,7 @@ import type { ExtractedInvoice, InvoiceExtractor } from '../application/ports';
 import { createUseCases, type Ports, type UseCases } from '../application/use-cases';
 import { allowedOrigins, parseEnv } from './env';
 
+export { socketOnly, trustedHops, vercel } from '../adapters/http';
 export { type AppEnv, allowedOrigins, DEV_ORIGINS, EnvError, EnvSchema, parseEnv } from './env';
 
 /**
@@ -33,7 +38,9 @@ export interface AppOptions {
   /** Origins added to ALLOWED_ORIGINS (the dev server adds the Vite ones). */
   extraOrigins?: readonly string[];
   log?: (line: string) => void;
-  socketIp?: (c: Context) => string | undefined;
+  socketIp?: SocketIp;
+  /** Proxy trust, chosen per entry point: `socketOnly` (default) or `vercel`. */
+  clientIp?: ClientIpResolver;
 }
 
 export interface App {
@@ -81,6 +88,7 @@ export function createApp(
     allowedOrigins: origins,
     ...(options.log === undefined ? {} : { log: options.log }),
     ...(options.socketIp === undefined ? {} : { socketIp: options.socketIp }),
+    ...(options.clientIp === undefined ? {} : { clientIp: options.clientIp }),
   });
   return { app, useCases, extractor: new UnavailableInvoiceExtractor(), close: database.close };
 }
@@ -95,7 +103,7 @@ export interface TestApp {
 
 /** Same HTTP app over the memory adapters; nothing leaves the process. */
 export function createTestApp(
-  options: { start?: Date; allowedOrigins?: readonly string[] } = {},
+  options: { start?: Date; allowedOrigins?: readonly string[]; clientIp?: ClientIpResolver } = {},
 ): TestApp {
   const adapters = createMemoryAdapters(options.start);
   const useCases = createUseCases(adapters);
@@ -106,6 +114,7 @@ export function createTestApp(
     allowedOrigins: options.allowedOrigins ?? ['http://localhost:5173'],
     log: (line) => logs.push(line),
     socketIp: () => '127.0.0.1',
+    ...(options.clientIp === undefined ? {} : { clientIp: options.clientIp }),
   });
   return { app, adapters, useCases, logs };
 }

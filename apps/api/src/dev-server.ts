@@ -51,6 +51,8 @@ let built: ReturnType<typeof composition.createApp>;
 try {
   built = composition.createApp(process.env, {
     extraOrigins: composition.DEV_ORIGINS,
+    // Local: no proxy in front, so forwarding headers are never trusted.
+    clientIp: composition.socketOnly,
     socketIp: (c) => getConnInfo(c).remote.address,
   });
 } catch (err) {

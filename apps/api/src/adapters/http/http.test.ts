@@ -32,7 +32,16 @@ import {
 } from '../../composition';
 import { allowedOrigins, EnvError, parseEnv } from '../../composition/env';
 import { FakeSignatureVerifier } from '../memory';
-import { callerIp, createHttpApp, hashClientId, MAX_BODY_BYTES } from './index';
+import {
+  type ClientIpResolver,
+  createHttpApp,
+  hashClientId,
+  MAX_BODY_BYTES,
+  socketOnly,
+  trustedHops,
+  validIp,
+  vercel,
+} from './index';
 
 const JSON_HEADERS = { 'content-type': 'application/json' };
 
@@ -230,17 +239,29 @@ describe('01-02 auth', () => {
     ]);
   });
 
-  it('the challenge is rate limited per hashed caller IP (x-forwarded-for first hop)', async () => {
+  it('by default the per-client limit uses the socket: rotating x-forwarded-for does not help', async () => {
     const t = fresh();
+    const hit = (n: number) =>
+      call(t, '/v1/auth/challenge', {
+        method: 'POST',
+        headers: { ...JSON_HEADERS, 'x-forwarded-for': `203.0.113.${n % 250}` },
+        body: JSON.stringify({ address: wallet(n) }),
+      });
+    for (let i = 0; i < 10; i++) expect((await hit(100 + i)).status).toBe(200);
+    const limited = await expectError(await hit(200), 'RATE_LIMITED');
+    expect(limited.error.details).toEqual({ windowSeconds: 60 });
+  });
+
+  it('with the vercel resolver the limit follows the platform header', async () => {
+    const t = createTestApp({ start: START, clientIp: vercel });
     const hit = (n: number, ip: string) =>
       call(t, '/v1/auth/challenge', {
         method: 'POST',
-        headers: { ...JSON_HEADERS, 'x-forwarded-for': `${ip}, 10.0.0.1` },
+        headers: { ...JSON_HEADERS, 'x-vercel-forwarded-for': ip, 'x-forwarded-for': '9.9.9.9' },
         body: JSON.stringify({ address: wallet(n) }),
       });
     for (let i = 0; i < 10; i++) expect((await hit(100 + i, '203.0.113.9')).status).toBe(200);
-    const limited = await expectError(await hit(200, '203.0.113.9'), 'RATE_LIMITED');
-    expect(limited.error.details).toEqual({ windowSeconds: 60 });
+    await expectError(await hit(200, '203.0.113.9'), 'RATE_LIMITED');
     expect((await hit(201, '198.51.100.7')).status).toBe(200);
   });
 
@@ -781,22 +802,62 @@ describe('CORS, headers and logs', () => {
     expect(t.logs[0]).not.toContain(ruc(51));
   });
 
-  it('callerIp prefers the first x-forwarded-for hop, then the socket', async () => {
-    const t = fresh();
-    const { Hono } = await import('hono');
-    const probe = new Hono();
-    probe.get('/', (c) => c.text(String(callerIp(c, () => '10.1.1.1'))));
-    probe.get('/none', (c) => c.text(String(callerIp(c))));
-    expect(
-      await (
-        await probe.request('/', { headers: { 'x-forwarded-for': ' 1.2.3.4 , 5.6.7.8' } })
-      ).text(),
-    ).toBe('1.2.3.4');
-    expect(await (await probe.request('/')).text()).toBe('10.1.1.1');
-    expect(await (await probe.request('/none')).text()).toBe('undefined');
-    expect(hashClientId('1.2.3.4')).toMatch(/^[0-9a-f]{32}$/);
-    expect(hashClientId('1.2.3.4')).not.toContain('1.2.3.4');
-    expect(t.logs).toEqual([]);
+  describe('client IP resolvers', () => {
+    async function resolve(
+      resolver: ClientIpResolver,
+      headers: Record<string, string>,
+      socketAddr?: string,
+    ): Promise<string> {
+      const { Hono } = await import('hono');
+      const probe = new Hono();
+      probe.get('/', (c) =>
+        c.text(String(resolver(c, socketAddr === undefined ? undefined : () => socketAddr))),
+      );
+      return (await probe.request('/', { headers })).text();
+    }
+    const XFF = { 'x-forwarded-for': '1.2.3.4, 5.6.7.8, 10.0.0.2' };
+
+    it('socketOnly ignores x-forwarded-for and the vercel headers', async () => {
+      const headers = { ...XFF, 'x-vercel-forwarded-for': '1.1.1.1', 'x-real-ip': '2.2.2.2' };
+      expect(await resolve(socketOnly, headers, '10.1.1.1')).toBe('10.1.1.1');
+      expect(await resolve(socketOnly, XFF)).toBe('undefined');
+    });
+
+    it('vercel reads x-vercel-forwarded-for, then x-real-ip, never x-forwarded-for', async () => {
+      expect(
+        await resolve(vercel, { ...XFF, 'x-vercel-forwarded-for': '1.1.1.1' }, '10.1.1.1'),
+      ).toBe('1.1.1.1');
+      expect(await resolve(vercel, { ...XFF, 'x-real-ip': '2001:db8::1' }, '10.1.1.1')).toBe(
+        '2001:db8::1',
+      );
+      expect(await resolve(vercel, XFF, '10.1.1.1')).toBe('10.1.1.1');
+      expect(await resolve(vercel, XFF)).toBe('undefined');
+    });
+
+    it('invalid values fall back to the socket, or to no client id', async () => {
+      const bad = { 'x-vercel-forwarded-for': 'evil', 'x-real-ip': '999.1.1.1' };
+      expect(await resolve(vercel, bad, '10.1.1.1')).toBe('10.1.1.1');
+      expect(await resolve(vercel, bad, 'not-an-ip')).toBe('undefined');
+      expect(
+        await resolve(trustedHops(1), { 'x-forwarded-for': '1.2.3.4, junk' }, '10.1.1.1'),
+      ).toBe('10.1.1.1');
+      expect(await resolve(socketOnly, {}, '')).toBe('undefined');
+      expect(validIp(' 1.2.3.4 ')).toBe('1.2.3.4');
+    });
+
+    it('trustedHops counts from the right of x-forwarded-for', async () => {
+      expect(await resolve(trustedHops(1), XFF, '10.1.1.1')).toBe('10.0.0.2');
+      expect(await resolve(trustedHops(2), XFF, '10.1.1.1')).toBe('5.6.7.8');
+      expect(await resolve(trustedHops(3), XFF, '10.1.1.1')).toBe('1.2.3.4');
+      expect(await resolve(trustedHops(4), XFF, '10.1.1.1')).toBe('10.1.1.1');
+      expect(await resolve(trustedHops(1), {}, '10.1.1.1')).toBe('10.1.1.1');
+      expect(() => trustedHops(0)).toThrow(RangeError);
+    });
+
+    it('the client id is an opaque hash of the IP', () => {
+      expect(hashClientId('1.2.3.4')).toMatch(/^[0-9a-f]{32}$/);
+      expect(hashClientId('1.2.3.4')).not.toContain('1.2.3.4');
+    });
   });
 });
 

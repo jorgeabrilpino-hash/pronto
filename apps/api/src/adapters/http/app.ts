@@ -8,6 +8,7 @@ import { requestId } from 'hono/request-id';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Clock } from '../../application/ports';
 import type { Actor, UseCases } from '../../application/use-cases';
+import { type ClientIpResolver, type SocketIp, socketOnly } from './client-ip';
 import { errorResponse, toDomainError } from './errors';
 import * as r from './routes';
 
@@ -26,8 +27,10 @@ export interface HttpAppOptions {
   allowedOrigins: readonly string[];
   /** Receives one JSON line per request. Defaults to stdout. */
   log?: (line: string) => void;
-  /** Socket address of the caller, used when there is no x-forwarded-for header. */
-  socketIp?: (c: Context) => string | undefined;
+  /** Socket address of the caller (from the server adapter). */
+  socketIp?: SocketIp;
+  /** How the caller IP is derived; defaults to `socketOnly` (no forwarding header trusted). */
+  clientIp?: ClientIpResolver;
 }
 
 export interface HttpEnv {
@@ -37,18 +40,6 @@ export interface HttpEnv {
 type Ctx = Context<HttpEnv>;
 
 const BEARER_RE = /^Bearer\s+(\S+)$/i;
-
-/** First hop of x-forwarded-for, else the socket address; undefined when neither is known. */
-export function callerIp(
-  c: Context,
-  socketIp?: (c: Context) => string | undefined,
-): string | undefined {
-  const forwarded = c.req.header('x-forwarded-for');
-  const first = forwarded?.split(',')[0]?.trim();
-  if (first !== undefined && first !== '') return first;
-  const socket = socketIp?.(c);
-  return socket === undefined || socket === '' ? undefined : socket;
-}
 
 /** Opaque client id for rate limits: the IP is never stored or logged in clear. */
 export function hashClientId(ip: string): string {
@@ -63,6 +54,7 @@ export function createHttpApp(options: HttpAppOptions): OpenAPIHono<HttpEnv> {
   const uc = options.useCases;
   const log = options.log ?? defaultLog;
   const allowed = new Set(options.allowedOrigins);
+  const clientIp = options.clientIp ?? socketOnly;
 
   const onError = (err: Error, c: Ctx) => {
     c.set('errorCode', toDomainError(err).code);
@@ -150,7 +142,7 @@ export function createHttpApp(options: HttpAppOptions): OpenAPIHono<HttpEnv> {
 
   // 01, 02
   v1.openapi(r.challengeRoute, async (c) => {
-    const ip = callerIp(c, options.socketIp);
+    const ip = clientIp(c, options.socketIp);
     const context = ip === undefined ? {} : { clientId: hashClientId(ip) };
     return c.json(await uc.requestChallenge.execute(c.req.valid('json'), context), 200);
   });
