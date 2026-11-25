@@ -113,7 +113,7 @@ const invoiceRow = (supplier: string, buyer: string, o: Record<string, unknown> 
   supplier_id: supplier,
   buyer_id: buyer,
   series: 'F001',
-  number: pick('0123456789', 8),
+  number: pick('123456789', 1) + pick('0123456789', 7),
   face_amount: '1000.0000000',
   issue_date: '2026-11-01',
   due_date: '2027-01-01',
@@ -284,6 +284,8 @@ describe('invoices', () => {
     ['currency other than USDC', { currency: 'EUR' }, 'invoices_currency_check'],
     ['series with 3 characters', { series: 'F01' }, 'invoices_series_format'],
     ['non numeric invoice number', { number: '12AB' }, 'invoices_number_format'],
+    ['invoice number with leading zeros', { number: '0123' }, 'invoices_number_format'],
+    ['invoice number zero', { number: '0' }, 'invoices_number_format'],
     ['version 0', { version: 0 }, 'invoices_version_positive'],
   ])('rejects %s', async (_label, override, name) => {
     const { supplier, buyer } = await twoCompanies();
@@ -295,7 +297,7 @@ describe('invoices', () => {
     for (const [i, bps] of [0, 5000, null].entries()) {
       const row = await insert(
         'invoices',
-        invoiceRow(supplier.id, buyer.id, { number: `${i}`, max_discount_bps: bps }),
+        invoiceRow(supplier.id, buyer.id, { number: `${i + 1}`, max_discount_bps: bps }),
       );
       expect(row.max_discount_bps).toBe(bps);
     }

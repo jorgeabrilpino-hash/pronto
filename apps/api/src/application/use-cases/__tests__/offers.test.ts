@@ -6,10 +6,19 @@ import {
 } from '@pronto/shared';
 import { describe, expect, it } from 'vitest';
 import type { ChainOffer } from '../../../domain/types';
-import { RECONCILE_RATE } from '../offers';
+import type { ChainInvocation } from '../../ports';
+import { FAILED_RECHECK_MAX_AGE_SECONDS, RECONCILE_RATE } from '../offers';
 import { expectCode, makeKit, wallet } from './kit';
 
 const TX = (c: string) => c.repeat(64);
+
+function inv(
+  k: ReturnType<typeof makeKit>,
+  offerIdHex: string,
+  fn: ChainInvocation['fn'],
+): ChainInvocation {
+  return { contractId: k.a.chain.contractId(), fn, offerIdHex };
+}
 
 async function prepared(maxDiscountBps?: number) {
   const k = makeKit();
@@ -110,7 +119,7 @@ describe('12 ReconcileOffer', () => {
     const { k, draft, supplier, buyer, invoiceId } = await prepared();
     const id = draft.offerIdHex;
     k.a.chain.setOffer(id, await k.chainMatching(id, 'open'));
-    k.a.chain.setTransaction(TX('a'), 'SUCCESS');
+    k.a.chain.setTransaction(TX('a'), 'SUCCESS', inv(k, id, 'create_offer'));
     const open = await k.uc.reconcileOffer.execute(buyer.actor, id, { txHash: TX('a') });
     expect(OfferSchema.parse(open)).toEqual(open);
     expect(open.chainStatus).toBe('open');
@@ -145,7 +154,7 @@ describe('12 ReconcileOffer', () => {
       'offer_expired',
     );
     k.a.chain.setOffer(id, await k.chainMatching(id, 'reclaimed'));
-    k.a.chain.setTransaction(TX('c'), 'SUCCESS');
+    k.a.chain.setTransaction(TX('c'), 'SUCCESS', inv(k, id, 'reclaim'));
     const r = await k.uc.reconcileOffer.execute(buyer.actor, id, { txHash: TX('c') });
     expect(r.chainStatus).toBe('reclaimed');
     expect(r.txReclaim).toBe(TX('c'));
@@ -334,16 +343,151 @@ describe('13 GetOfferProof and 18 GetNetworkSummary', () => {
     });
     const id = draft.offerIdHex;
     k.a.chain.setOffer(id, await k.chainMatching(id, 'open'));
-    k.a.chain.setTransaction(TX('1'), 'SUCCESS');
+    k.a.chain.setTransaction(TX('1'), 'SUCCESS', inv(k, id, 'create_offer'));
     await k.uc.reconcileOffer.execute(buyer.actor, id, { txHash: TX('1') });
     k.a.clock.advanceSeconds(30);
     k.a.chain.setOffer(id, await k.chainMatching(id, 'accepted'));
-    k.a.chain.setTransaction(TX('2'), 'SUCCESS');
+    k.a.chain.setTransaction(TX('2'), 'SUCCESS', inv(k, id, 'accept'));
     await k.uc.reconcileOffer.execute(supplier.actor, id, { txHash: TX('2') });
     const s = await k.uc.getNetworkSummary.execute();
     expect(NetworkSummarySchema.parse(s)).toEqual(s);
     expect(s.offersCreated).toBe(1);
     expect(s.offersAccepted).toBe(1);
     expect(s.lastOperations.map((o) => o.kind)).toEqual(['accept', 'create']);
+  });
+});
+
+describe('security fixes', () => {
+  it('forged tx evidence is never stored and is audited as TX_EVIDENCE_REJECTED', async () => {
+    type Make = (k: ReturnType<typeof makeKit>, id: string) => ChainInvocation | undefined;
+    const forged: Array<[string, Make]> = [
+      ['no contract invocation', () => undefined],
+      ['contract', (_k, id) => ({ contractId: 'COTHER', fn: 'create_offer', offerIdHex: id })],
+      ['offer', (k) => inv(k, 'f'.repeat(64), 'create_offer')],
+      ['function', (k, id) => inv(k, id, 'reclaim')],
+    ];
+    for (const [reason, make] of forged) {
+      const { k, draft, buyer } = await prepared();
+      const id = draft.offerIdHex;
+      k.a.chain.setOffer(id, await k.chainMatching(id, 'open'));
+      k.a.chain.setTransaction(TX('9'), 'SUCCESS', make(k, id));
+      const r = await k.uc.reconcileOffer.execute(buyer.actor, id, { txHash: TX('9') });
+      expect(r.chainStatus).toBe('open');
+      expect(r.txCreate).toBeNull();
+      const ev = k.a.audit.events.find((e) => e.kind === 'TX_EVIDENCE_REJECTED');
+      expect(ev?.data).toEqual({ txHash: TX('9'), reason, status: 'open' });
+    }
+  });
+
+  it('a FAILED transaction is rejected evidence too', async () => {
+    const { k, draft, buyer } = await prepared();
+    const id = draft.offerIdHex;
+    k.a.chain.setOffer(id, await k.chainMatching(id, 'open'));
+    k.a.chain.setTransaction(TX('8'), 'FAILED', inv(k, id, 'create_offer'));
+    const r = await k.uc.reconcileOffer.execute(buyer.actor, id, { txHash: TX('8') });
+    expect(r.txCreate).toBeNull();
+    expect(k.a.audit.kinds()).toContain('TX_EVIDENCE_REJECTED');
+  });
+
+  it('a failed offer found on chain recovers its real status', async () => {
+    const { k, draft, supplier, buyer, invoiceId } = await prepared();
+    const id = draft.offerIdHex;
+    k.a.clock.advanceSeconds(601);
+    expect((await k.uc.reconcileOffer.execute(buyer.actor, id)).chainStatus).toBe('failed');
+    // The create landed late: the chain now holds the offer, already accepted.
+    k.a.chain.setOffer(id, await k.chainMatching(id, 'accepted'));
+    k.a.chain.setTransaction(TX('7'), 'SUCCESS', inv(k, id, 'accept'));
+    // The 15 s throttle also applies to failed offers.
+    const calls = k.a.chain.getOfferCalls;
+    await k.uc.reconcileOffer.execute(buyer.actor, id);
+    expect(k.a.chain.getOfferCalls).toBe(calls);
+    k.a.clock.advanceSeconds(15);
+    const r = await k.uc.reconcileOffer.execute(supplier.actor, id, { txHash: TX('7') });
+    expect(r.chainStatus).toBe('accepted');
+    expect(r.txAccept).toBe(TX('7'));
+    expect(k.a.audit.kinds()).toContain('OFFER_RECOVERED_AFTER_FAILED');
+    const view = await k.uc.getInvoice.execute(buyer.actor, invoiceId);
+    expect(view.displayStatus).toBe('collected');
+  });
+
+  it('a failed offer stays failed when the chain offer does not match or is missing', async () => {
+    const { k, draft, buyer } = await prepared();
+    const id = draft.offerIdHex;
+    k.a.clock.advanceSeconds(601);
+    await k.uc.reconcileOffer.execute(buyer.actor, id);
+    const bads: Array<Partial<ChainOffer>> = [
+      { net: 1n },
+      { buyer: wallet(800) },
+      { supplier: wallet(801) },
+      { amount: 1n },
+    ];
+    for (const bad of bads) {
+      k.a.chain.setOffer(id, { ...(await k.chainMatching(id, 'open')), ...bad });
+      k.a.clock.advanceSeconds(15);
+      expect((await k.uc.reconcileOffer.execute(buyer.actor, id)).chainStatus).toBe('failed');
+    }
+    k.a.chain.setOffer(id, null);
+    k.a.clock.advanceSeconds(15);
+    expect((await k.uc.reconcileOffer.execute(buyer.actor, id)).chainStatus).toBe('failed');
+    // Another contract id is never a match.
+    k.a.chain.setOffer(id, await k.chainMatching(id, 'open'));
+    k.a.chain.setContractId('COTHER');
+    k.a.clock.advanceSeconds(15);
+    expect((await k.uc.reconcileOffer.execute(buyer.actor, id)).chainStatus).toBe('failed');
+    expect(k.a.audit.kinds()).not.toContain('OFFER_RECOVERED_AFTER_FAILED');
+  });
+
+  it('a failed offer older than 7 days is not re-read', async () => {
+    const { k, draft, buyer } = await prepared();
+    const id = draft.offerIdHex;
+    k.a.clock.advanceSeconds(601);
+    await k.uc.reconcileOffer.execute(buyer.actor, id);
+    k.a.chain.setOffer(id, await k.chainMatching(id, 'open'));
+    k.a.clock.advanceSeconds(FAILED_RECHECK_MAX_AGE_SECONDS);
+    const calls = k.a.chain.getOfferCalls;
+    expect((await k.uc.reconcileOffer.execute(buyer.actor, id)).chainStatus).toBe('failed');
+    expect(k.a.chain.getOfferCalls).toBe(calls);
+  });
+
+  it('re-reading a failed offer with the chain down is CHAIN_UNAVAILABLE', async () => {
+    const { k, draft, buyer } = await prepared();
+    k.a.clock.advanceSeconds(601);
+    await k.uc.reconcileOffer.execute(buyer.actor, draft.offerIdHex);
+    k.a.chain.unavailable = true;
+    k.a.clock.advanceSeconds(15);
+    await expectCode(
+      k.uc.reconcileOffer.execute(buyer.actor, draft.offerIdHex),
+      'CHAIN_UNAVAILABLE',
+    );
+  });
+
+  it('a failed offer live on chain blocks PrepareOffer and CancelInvoice', async () => {
+    const { k, draft, supplier, buyer, invoiceId } = await prepared();
+    const id = draft.offerIdHex;
+    k.a.clock.advanceSeconds(601);
+    await k.uc.reconcileOffer.execute(buyer.actor, id);
+    k.a.chain.setOffer(id, await k.chainMatching(id, 'open'));
+    const body = { discountBps: 150, validityDays: 3 };
+    await expectCode(k.uc.prepareOffer.execute(buyer.actor, invoiceId, body), 'OFFER_EXISTS');
+    await expectCode(k.uc.cancelInvoice.execute(supplier.actor, invoiceId), 'OFFER_EXISTS');
+    // A wrong role still gets FORBIDDEN without touching the chain.
+    k.a.chain.unavailable = true;
+    await expectCode(k.uc.cancelInvoice.execute(buyer.actor, invoiceId), 'FORBIDDEN');
+    // Fail closed when the chain cannot be read.
+    await expectCode(k.uc.prepareOffer.execute(buyer.actor, invoiceId, body), 'CHAIN_UNAVAILABLE');
+    await expectCode(k.uc.cancelInvoice.execute(supplier.actor, invoiceId), 'CHAIN_UNAVAILABLE');
+    // Once reclaimed on chain it no longer blocks.
+    k.a.chain.unavailable = false;
+    k.a.chain.setOffer(id, await k.chainMatching(id, 'reclaimed'));
+    const again = await k.uc.prepareOffer.execute(buyer.actor, invoiceId, body);
+    expect(again.offerIdHex).not.toBe(id);
+  });
+
+  it('a failed offer absent from chain lets the supplier cancel', async () => {
+    const { k, draft, supplier, buyer, invoiceId } = await prepared();
+    k.a.clock.advanceSeconds(601);
+    await k.uc.reconcileOffer.execute(buyer.actor, draft.offerIdHex);
+    const r = await k.uc.cancelInvoice.execute(supplier.actor, invoiceId);
+    expect(r.status).toBe('cancelled');
   });
 });

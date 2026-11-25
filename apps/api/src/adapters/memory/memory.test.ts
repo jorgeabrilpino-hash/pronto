@@ -24,7 +24,8 @@ function invoice(id: string, extra: Partial<Invoice> = {}): Invoice {
     supplierId: 's',
     buyerId: 'b',
     series: 'F001',
-    number: id,
+    // Canonical digits only (the repository mirrors the DB check).
+    number: id.replace(/\D/g, '') || '9',
     faceAmount: 1n,
     currency: 'USDC',
     issueDate: '2026-11-20',

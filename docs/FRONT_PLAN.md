@@ -52,7 +52,7 @@ Estructura: `apps/web/src/{api,wallet,chain,features,components,routes}`. Una ca
 
 ## 7. Diseño
 
-El diseño C está **pendiente de aprobación de Jorge**: no cambies sus decisiones sin avisar. Hay mockups de las vistas 1, 2, 3, 5, 6, 7, 8 y 11; **faltan 4, 9, 10, 12 y 15**: constrúyelas con los patrones de `DESIGN.md` (tarjeta de comprobante con muescas, sello "PAGADO", un botón dorado). Los textos que Stitch inventó ("SUNAT validada", "Lectura óptica"...) **no van**: no hay IA ni verificación de SUNAT en el MVP.
+El diseño C fue **aprobado por Jorge el 23 nov** (dirección y las siete decisiones de `docs/mockups/README.md`): no cambies sus decisiones sin avisar. Hay mockups de las vistas 1, 2, 3, 5, 6, 7, 8 y 11; **faltan 4, 9, 10, 12 y 15**: constrúyelas con los patrones de `DESIGN.md` (tarjeta de comprobante con muescas, sello "PAGADO", un botón dorado). Los textos que Stitch inventó ("SUNAT validada", "Lectura óptica"...) **no van**: no hay IA ni verificación de SUNAT en el MVP.
 
 ## 8. Variables (solo nombres; los valores reales no se commitean)
 

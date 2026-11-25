@@ -5,6 +5,7 @@ const THRESHOLD = { lines: 90, statements: 90, functions: 90, branches: 90 };
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
+    setupFiles: ['./vitest.setup.ts'],
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],

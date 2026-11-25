@@ -12,13 +12,13 @@
   - XLM (respaldo y pruebas): `CDJLAF3FBQCMU35CPTAF3ICL5W3XSTMDOOLWKJU3K4GGC5WOWIRBY52S`.
   - Prueba real en la instancia XLM: crear reservó 9,85, cobrar pagó 9,85 y dejó el contrato en 0, un segundo cobro falló (error #5) y `get_offer` quedó `Accepted`.
 - Supabase (cuenta aparte, proyecto `iasvqinlafmpqjkwckup`) con secretos en `C:\Buildathon\.secrets\pronto.env`, fuera del repo. Cuentas de testnet `comprador` y `proveedor` importadas en Varial.
-- **Diseño C** (Stitch): 11 pantallas más correcciones; faltan las vistas 4, 9, 10, 12 y 15 y la aprobación de Jorge (`docs/mockups/README.md`).
+- **Diseño C** (Stitch): 11 pantallas más correcciones; **aprobado por Jorge el 23 nov**; faltan en Stitch las vistas 4, 9, 10, 12 y 15, que se construyen en código con `DESIGN.md` (`docs/mockups/README.md`).
 
 ## ⏸️ Pendientes de Jorge
 
 1. Registrar el repo en el Hub (cierre 25 nov, 11:59 p. m.) y decidir el **push del checkpoint**.
 2. Activar el USDC en `comprador` y `proveedor` y pedir USDC de prueba en el grifo de Circle (para probar con USDC real).
-3. Aprobar el diseño C (siete decisiones en `docs/mockups/README.md`).
+3. Revisar en el celular las vistas 4, 9, 10, 12 y 15 cuando el front las construya.
 4. Clave gratuita de Gemini (solo para la lectura de facturas con IA).
 5. Borrar `Downloads\supabase-stellar.txt` y regenerar la clave secreta de Supabase tras la entrega.
 6. Crear `.env.example` (nombres, sin valores): el permiso del proyecto bloqueó su creación.

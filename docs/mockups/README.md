@@ -1,6 +1,6 @@
 # Pronto — Mockups móviles (Flujo V2, dirección C "Comprobante")
 
-> Actualizado 23 nov 2026. Stitch, proyecto [`13877670176772311015`](https://stitch.withgoogle.com/projects/13877670176772311015), sistema `assets/5f2b67dff520465a9ea8ddda583c3328`. Reglas visuales: `/DESIGN.md`. Flujo: `docs/FLUJO_V2.md` §3 a §5. **Pendiente de aprobación de Jorge (GATE) antes de escribir pantallas.**
+> Actualizado 23 nov 2026. Stitch, proyecto [`13877670176772311015`](https://stitch.withgoogle.com/projects/13877670176772311015), sistema `assets/5f2b67dff520465a9ea8ddda583c3328`. Reglas visuales: `/DESIGN.md`. Flujo: `docs/FLUJO_V2.md` §3 a §5. **Dirección C y las siete decisiones de abajo aprobadas por Jorge el 23 nov 2026 (GATE superado).** Faltan en Stitch las vistas 4, 9, 10, 12 y 15: se construyen en código con los patrones de `DESIGN.md`.
 
 ## Cómo abrirlas
 

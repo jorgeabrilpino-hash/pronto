@@ -5,8 +5,10 @@ import type {
   AttachmentRepository,
   AuditEvent,
   AuditLog,
+  ChainInvocation,
   ChainOperation,
   ChainReader,
+  ChainTransaction,
   ChallengeStore,
   Clock,
   CompanyRepository,
@@ -25,7 +27,7 @@ import type {
 } from '../../application/ports';
 import { isActiveOffer } from '../../domain/invoice';
 import type { Attachment, ChainOffer, Company, Invoice, Offer } from '../../domain/types';
-import { generateCompanyCode } from '../../domain/values';
+import { canonicalInvoiceNumber, generateCompanyCode } from '../../domain/values';
 
 /**
  * In-memory adapters for every port. They keep copies (never hand out internal objects)
@@ -123,7 +125,15 @@ export class InMemoryInvoiceRepository implements InvoiceRepository {
   private readonly rows = new Map<string, Invoice>();
   constructor(private readonly clock: Clock = new MutableClock()) {}
 
+  /** Mirrors the DB check `number ~ '^[1-9][0-9]{0,7}$'`: only canonical numbers are stored. */
+  private static assertCanonical(number: string): void {
+    if (canonicalInvoiceNumber(number) !== number) {
+      throw new DomainError('VALIDATION_ERROR', 'Invoice number must be canonical', { number });
+    }
+  }
+
   async insert(invoice: Invoice): Promise<void> {
+    InMemoryInvoiceRepository.assertCanonical(invoice.number);
     if (await this.duplicateExists(invoice.supplierId, invoice.series, invoice.number)) {
       throw new DomainError('INVOICE_DUPLICATE');
     }
@@ -140,13 +150,22 @@ export class InMemoryInvoiceRepository implements InvoiceRepository {
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .map(copy);
   }
+  /** Compares canonical numbers, so "0123" and "123" are the same invoice. */
   async duplicateExists(supplierId: string, series: string, number: string): Promise<boolean> {
+    const wanted = canonicalInvoiceNumber(number) ?? number;
     for (const i of this.rows.values()) {
-      if (i.supplierId === supplierId && i.series === series && i.number === number) return true;
+      if (
+        i.supplierId === supplierId &&
+        i.series === series &&
+        (canonicalInvoiceNumber(i.number) ?? i.number) === wanted
+      ) {
+        return true;
+      }
     }
     return false;
   }
   async update(id: string, expectedVersion: number, patch: InvoicePatch): Promise<Invoice | null> {
+    if (patch.number !== undefined) InMemoryInvoiceRepository.assertCanonical(patch.number);
     const i = this.rows.get(id);
     if (i === undefined || i.version !== expectedVersion) return null;
     const next: Invoice = { ...i, ...patch, version: i.version + 1, updatedAt: this.clock.now() };
@@ -299,7 +318,10 @@ export class FakeFileStorage implements FileStorage {
 
 export class FakeChainReader implements ChainReader {
   private readonly offers = new Map<string, ChainOffer>();
-  private readonly txs = new Map<string, 'SUCCESS' | 'FAILED'>();
+  private readonly txs = new Map<
+    string,
+    { status: 'SUCCESS' | 'FAILED'; invocation?: ChainInvocation }
+  >();
   unavailable = false;
   getOfferCalls = 0;
   constructor(private contract = 'CPRONTOTESTCONTRACT') {}
@@ -316,17 +338,25 @@ export class FakeChainReader implements ChainReader {
     const o = this.offers.get(offerIdHex);
     return o === undefined ? null : copy(o);
   }
-  async getTransaction(hash: string): Promise<{ status: 'SUCCESS' | 'FAILED' | 'NOT_FOUND' }> {
+  async getTransaction(hash: string): Promise<ChainTransaction> {
     if (this.unavailable) throw new Error('RPC unavailable');
-    return { status: this.txs.get(hash) ?? 'NOT_FOUND' };
+    const tx = this.txs.get(hash);
+    if (tx === undefined) return { status: 'NOT_FOUND' };
+    return tx.invocation === undefined
+      ? { status: tx.status }
+      : { status: tx.status, invocation: { ...tx.invocation } };
   }
   /** Test helpers: set the contract state the reconciler will read. */
   setOffer(offerIdHex: string, offer: ChainOffer | null): void {
     if (offer === null) this.offers.delete(offerIdHex);
     else this.offers.set(offerIdHex, copy(offer));
   }
-  setTransaction(hash: string, status: 'SUCCESS' | 'FAILED'): void {
-    this.txs.set(hash, status);
+  /** Without `invocation` the transaction carries no decodable contract call. */
+  setTransaction(hash: string, status: 'SUCCESS' | 'FAILED', invocation?: ChainInvocation): void {
+    this.txs.set(
+      hash,
+      invocation === undefined ? { status } : { status, invocation: { ...invocation } },
+    );
   }
 }
 

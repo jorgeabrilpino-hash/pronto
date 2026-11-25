@@ -9,6 +9,7 @@ import {
   type z,
 } from '@pronto/shared';
 import {
+  ACTION_ACTOR,
   assertDifferentParties,
   assertInvoiceDates,
   currentOffer,
@@ -17,11 +18,12 @@ import {
   isActiveOffer,
   nextStatus,
 } from '../../domain/invoice';
-import type { Invoice } from '../../domain/types';
+import type { Invoice, Offer } from '../../domain/types';
 import { parseInvoiceRef, parseMoney } from '../../domain/values';
 import type {
   AttachmentRepository,
   AuditLog,
+  ChainReader,
   Clock,
   CompanyRepository,
   IdGenerator,
@@ -31,6 +33,7 @@ import type {
 } from '../ports';
 import {
   type Actor,
+  failedOfferLiveOnChain,
   loadCompany,
   loadInvoice,
   parseInput,
@@ -193,11 +196,18 @@ async function transition(
   action: InvoiceAction,
   extra: InvoicePatch = {},
   validate?: (invoice: Invoice, role: Role) => Promise<void>,
+  liveOfferCheck?: (offers: Offer[]) => Promise<boolean>,
 ): Promise<InvoiceDto> {
   const me = await requireCompany(deps.companies, actor);
   const invoice = await loadInvoice(deps.invoices, invoiceId);
   const role = roleOn(invoice, me.id);
-  const hasActiveOffer = (await deps.offers.byInvoice(invoice.id)).some(isActiveOffer);
+  const offers = await deps.offers.byInvoice(invoice.id);
+  // The chain is consulted only for the right role, so a wrong role still gets FORBIDDEN.
+  const hasActiveOffer =
+    offers.some(isActiveOffer) ||
+    (liveOfferCheck !== undefined &&
+      role === ACTION_ACTOR[action] &&
+      (await liveOfferCheck(offers)));
   const to = nextStatus(invoice.status, action, role, hasActiveOffer);
   if (validate !== undefined) await validate(invoice, role);
   const updated = await deps.invoices.update(invoice.id, invoice.version, { ...extra, status: to });
@@ -230,11 +240,17 @@ export class RejectInvoice {
   }
 }
 
-/** 10 CancelInvoice: supplier only, never with a pending, open or accepted offer. */
+/**
+ * 10 CancelInvoice: supplier only, never with a pending, open or accepted offer. A `failed`
+ * offer that is open or accepted on chain also blocks it (OFFER_EXISTS); if the chain cannot
+ * be read for that check the call fails closed with CHAIN_UNAVAILABLE.
+ */
 export class CancelInvoice {
-  constructor(private readonly deps: InvoiceDeps) {}
+  constructor(private readonly deps: InvoiceDeps & { chain: ChainReader }) {}
   execute(actor: Actor | null, invoiceId: string): Promise<InvoiceDto> {
-    return transition(this.deps, actor, invoiceId, 'cancel');
+    return transition(this.deps, actor, invoiceId, 'cancel', {}, undefined, (offers) =>
+      failedOfferLiveOnChain(this.deps.chain, offers),
+    );
   }
 }
 

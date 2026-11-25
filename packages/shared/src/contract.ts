@@ -24,7 +24,15 @@ export const IdSchema = z.uuid();
 export const IsoDateSchema = z.iso.date();
 export const IsoDateTimeSchema = z.iso.datetime();
 export const InvoiceSeriesSchema = z.string().regex(/^[A-Z0-9]{4}$/);
-export const InvoiceNumberSchema = z.string().regex(/^\d{1,8}$/);
+/**
+ * Invoice number: 1 to 8 digits. Leading zeros are stripped so "0123" and "123" are the
+ * same invoice (the database checks `^[1-9][0-9]{0,7}$`); all zeros is rejected.
+ */
+export const InvoiceNumberSchema = z
+  .string()
+  .regex(/^\d{1,8}$/)
+  .transform((v) => v.replace(/^0+/, ''))
+  .refine((v) => v.length > 0, 'Invoice number cannot be zero');
 
 export const InvoiceStatusSchema = z.enum(['sent', 'rejected', 'confirmed', 'cancelled']);
 export const ChainStatusSchema = z.enum(['pending', 'open', 'accepted', 'reclaimed', 'failed']);
