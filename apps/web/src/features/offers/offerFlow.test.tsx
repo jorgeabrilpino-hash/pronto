@@ -16,6 +16,8 @@ vi.mock('@/chain/operation', async (orig) => ({
     onStep: (s: string) => void,
   ) => {
     onStep('sign');
+    // The network takes a moment: the sheet must not be treated as finished meanwhile.
+    await new Promise((resolve) => setTimeout(resolve, 150));
     const { applyChainOperation } = await import('@/mocks/db');
     return applyChainOperation(p.kind, p.offerIdHex);
   },
@@ -56,7 +58,10 @@ describe('offer lifecycle through the screens', () => {
     expect(screen.getByText(/equivale a 18,5/)).toBeInTheDocument();
     await userEvent.click(reserve);
     expect(await screen.findByText('Confirmado')).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Cerrar' }));
+    // "Confirmado" is also the last step label, so wait until the sheet unlocks.
+    const close = screen.getByRole('button', { name: 'Cerrar' });
+    await waitFor(() => expect(close).toBeEnabled());
+    await userEvent.click(close);
     await waitFor(() => expect(router.state.location.pathname).toBe(`/pagar/${id}`));
     expect((await api.invoice(id)).displayStatus).toBe('offer_open');
 
