@@ -14,50 +14,73 @@ No es factoring: no hay inversionistas ni se promete rendimiento. El adelanto lo
 
 ## Arquitectura
 
-- **Contrato Soroban** (`contracts/pronto_offer`): `create_offer`, `accept`, `reclaim`, `get_offer`. Un activo por despliegue, fijado en el constructor. Eventos para reconciliación.
-- **Frontend** (React + TypeScript + Stellar Wallets Kit): vista del comprador y vista del proveedor.
-- **Backend** (Supabase): factura, RUC y conformidad; vínculo factura ↔ oferta con clave única por factura; reconciliador que confirma el resultado en la red antes de actualizar la app; comprobante y exportación para tesorería.
+Monorepo pnpm en TypeScript, más el contrato en Rust.
+
+- **Contrato Soroban** (`contracts/pronto_offer`): `create_offer`, `accept`, `reclaim`, `get_offer`, `token`. Un activo por despliegue, fijado en el constructor.
+- **API** (`apps/api`): arquitectura hexagonal con Hono y OpenAPI. Inicio de sesión firmando con la billetera, perfiles de empresa (proveedor, comprador o ambos), facturas, ofertas y reconciliación que lee el estado de la red antes de actualizar la base de datos.
+- **Web** (`apps/web`): React y Vite, pensada para el teléfono. Conexión con Stellar Wallets Kit o con una cuenta de prueba creada en el navegador (solo testnet, clave cifrada con PIN).
+- **Datos** (`supabase/`): Postgres con RLS activado y sin acceso público; adjuntos en un bucket privado.
+- **Contratos compartidos** (`packages/shared`): tipos y validaciones que usan la API y la web.
 - **Privacidad:** el identificador de oferta es aleatorio (no deriva de datos de la factura). Nombres, RUC y documentos no se escriben en la red.
 
 ## Cómo ejecutarlo
 
+Requiere Node 24 o superior y pnpm 11.
+
 ```bash
-# Pruebas del contrato (11 pruebas)
-cargo test
+pnpm install
+pnpm check                      # formato, tipos y pruebas
+pnpm --filter ./apps/web dev    # web; sin VITE_API_URL usa datos simulados
+pnpm --filter ./apps/api dev    # API; requiere tu propio proyecto de Supabase
+```
 
-# Compilar a WASM (requiere Stellar CLI y el target wasm32v1-none)
-stellar contract build
+La API lee su configuración de variables de entorno (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `JWT_SECRET` y los datos del contrato). La web contra la API real usa `VITE_API_URL`, `VITE_PRONTO_CONTRACT_ID` y `VITE_USDC_SAC_ID`. No se publica ningún secreto en el repositorio.
 
-# Cuenta de testnet con fondos
-stellar keys generate alice --network testnet --fund
+Contrato:
 
-# Activo de prueba: XLM nativo envuelto como contrato (SAC)
-stellar contract id asset --asset native --network testnet
-
-# Desplegar (el constructor recibe el activo)
-stellar contract deploy --wasm <ruta-del-wasm-que-imprime-el-build> \
-  --source alice --network testnet -- --token <ID_DEL_SAC>
+```bash
+cargo test                 # 11 pruebas
+stellar contract build     # requiere Stellar CLI y el target wasm32v1-none
+stellar contract deploy --wasm <ruta-del-wasm> --source <identidad> --network testnet -- --token <ID_DEL_SAC>
 ```
 
 ## Evidencia en testnet
 
-- ID del contrato: _pendiente de despliegue_
-- Explorador: _pendiente (stellar.expert/explorer/testnet)_
-- Activo de prueba: unidades de prueba, **no son soles convertibles**.
+| Instancia | Contrato |
+|---|---|
+| USDC de prueba (la configurada para la app) | [`CCEP3RMDUYCFD3GJPDTMH2OQGX3KTV4NX7VRCXLUIIU2ZZOSKL4M5BE4`](https://stellar.expert/explorer/testnet/contract/CCEP3RMDUYCFD3GJPDTMH2OQGX3KTV4NX7VRCXLUIIU2ZZOSKL4M5BE4) |
+| XLM de prueba (verificación del contrato) | [`CDJLAF3FBQCMU35CPTAF3ICL5W3XSTMDOOLWKJU3K4GGC5WOWIRBY52S`](https://stellar.expert/explorer/testnet/contract/CDJLAF3FBQCMU35CPTAF3ICL5W3XSTMDOOLWKJU3K4GGC5WOWIRBY52S) |
+
+En la instancia con XLM se reservaron 9.85, el proveedor cobró al aceptar y un segundo intento de aceptar fue rechazado. Los activos son de prueba y **no son soles convertibles**.
+
+## Estado
+
+Hecho:
+
+- Contrato desplegado en testnet.
+- API y base de datos con pruebas automáticas.
+- En la web contra la API real se verificó: crear una cuenta de prueba en testnet con USDC activado, iniciar sesión firmando y registrar una empresa.
+
+Pendiente:
+
+- Recorrer en la web el ciclo completo con USDC (reservar, cobrar y recuperar) sobre la red.
+- Terminar la pantalla de inicio (saldo y últimos movimientos), el historial y el detalle de la oferta.
+- Instalación como aplicación (PWA) y despliegue público.
+- Video de demostración.
 
 ## Integrantes
 
-_Pendiente: nombre y usuario de GitHub de cada integrante._
+Jorge, participante individual — GitHub: [jorgeabrilpino-hash](https://github.com/jorgeabrilpino-hash).
 
 ## Uso de IA y código previo
 
-- **IA:** el contrato y sus pruebas se redactaron con ayuda de Claude (Anthropic) y fueron revisados y ejecutados por el equipo. _Completar con el resto de usos de IA (interfaz, backend, guion del video)._
-- **Código previo:** este repositorio parte de cero durante la buildathon. _Si se reutiliza algo de proyectos anteriores (por ejemplo de EcoBonus), declararlo aquí con su alcance._
-- **Librerías de terceros:** soroban-sdk, Stellar Wallets Kit, Stellar SDK. _Completar al integrar._
+- **IA:** el contrato, la API, la web, las pruebas y la documentación se desarrollaron con ayuda de Claude (Anthropic) mediante Claude Code. Las exploraciones de diseño usaron Google Stitch. El producto no usa un modelo de IA para decidir ni para mover dinero.
+- **Código previo:** este repositorio parte de cero durante la buildathon.
+- **Librerías de terceros:** soroban-sdk, Stellar SDK, Stellar Wallets Kit, Hono, zod, jose, Kysely, node-postgres, React, Vite, MSW y Vitest.
 
 ## Alcance y límites
 
-Estudio y prototipo en testnet con carga manual de obligaciones y una sola moneda de prueba. Fuera de alcance por ahora: integración contable, verificación de cesión externa de facturas, recuperación de cuentas y conversión a moneda local. Para operar con dinero real se necesita revisión contractual, tributaria, contable y de datos con especialistas locales.
+Estudio y prototipo en testnet con carga manual de obligaciones. Fuera de alcance por ahora: integración contable, verificación de cesión externa de facturas, recuperación de cuentas y conversión a moneda local. Para operar con dinero real se necesita revisión contractual, tributaria, contable y de datos con especialistas locales.
 
 ## Licencia
 
